@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 Oil Repricing Analysis — Joel Tassinari</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --navy:  #1B2A4A; --steel: #2E5F8A; --gold:  #C9A84C;
+  --red:   #E74C3C; --green: #27AE60; --ltblue:#4A90C4;
+  --grey:  #7F8C8D; --white: #FFFFFF; --bg:    #0A1220;
+  --panel: #0D1521; --c-air: #E74C3C; --c-ind: #C9A84C;
+  --c-sw:  #4A90C4; --c-dc:  #8E6BBF; --c-wti: #F0C040;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'EB Garamond',Georgia,serif;background:var(--bg);color:#E0E8F0;min-height:100vh;overflow-x:hidden}
+
+/* HEADER */
+.hdr{background:var(--navy);border-bottom:1px solid rgba(74,144,196,0.3);padding:18px 32px 15px;display:flex;justify-content:space-between;align-items:flex-end}
+.hdr h2{font-size:21px;font-weight:500;color:var(--white)}.hdr h2 em{color:var(--ltblue);font-style:italic}
+.hdr-sub{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.16em;color:var(--grey);text-transform:uppercase;margin-top:3px}
+.hdr-right{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--grey);text-align:right;line-height:1.9}
+
+/* LAYOUT */
+.wrap{display:flex;min-height:calc(100vh - 64px)}
+
+/* SIDEBAR */
+.sb{width:240px;min-width:240px;background:var(--navy);border-right:1px solid rgba(74,144,196,0.15);padding:14px 12px;flex-shrink:0;align-self:flex-start;min-height:100%}
+.sb-lbl{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.2em;color:var(--ltblue);text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid rgba(74,144,196,0.15)}
+.sb-sec{margin-bottom:18px}
+
+/* GAP CARDS */
+.gap-card{border-radius:3px;padding:9px 11px;margin-bottom:7px;border-left:3px solid transparent;background:rgba(255,255,255,0.03)}
+.gc-sector{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.7;margin-bottom:3px}
+.gc-implied{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:500;line-height:1}
+.gc-gap{font-size:11px;opacity:0.75;margin-top:2px}
+.gc-note{font-size:10.5px;font-style:italic;color:rgba(224,232,240,0.55);margin-top:5px;line-height:1.4;border-top:1px solid rgba(255,255,255,0.06);padding-top:5px}
+
+/* SCENARIO BUTTONS */
+.sc-btns{display:flex;flex-direction:column;gap:6px}
+.sc-btn{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:3px;padding:8px 10px;cursor:pointer;text-align:left;width:100%;transition:all 0.12s}
+.sc-btn:hover{background:rgba(74,144,196,0.1);border-color:rgba(74,144,196,0.3)}
+.sc-btn.active{background:rgba(74,144,196,0.12);border-color:rgba(74,144,196,0.4)}
+.sc-name{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;margin-bottom:2px;letter-spacing:0.05em}
+.sc-desc{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--grey);margin-bottom:2px}
+.sc-sub{font-size:10.5px;color:var(--grey);font-style:italic}
+
+.run-btn{width:100%;padding:8px;background:var(--steel);border:none;border-radius:3px;color:var(--white);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;margin-top:8px;transition:background 0.15s}
+.run-btn:hover{background:var(--ltblue)}.run-btn.running{background:var(--grey);cursor:not-allowed}
+
+.stat-r{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10.5px}
+.stat-l{color:var(--grey);font-style:italic}.stat-v{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--white)}
+.sb-note{font-size:9.5px;color:rgba(127,140,141,0.75);font-style:italic;line-height:1.5;margin-top:5px}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+
+/* TABS */
+.tabs{display:flex;gap:2px;padding:14px 28px 0;background:var(--panel);border-bottom:1px solid rgba(74,144,196,0.15);position:relative}
+.tab{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;padding:7px 14px;border:1px solid rgba(74,144,196,0.2);background:transparent;color:var(--grey);cursor:pointer;transition:all 0.14s;border-bottom:none;border-radius:3px 3px 0 0}
+.tab.active{background:var(--steel);border-color:var(--steel);color:var(--white)}
+.tab:hover:not(.active){border-color:var(--ltblue);color:var(--ltblue)}
+.how-btn{position:absolute;right:28px;top:14px;background:rgba(74,144,196,0.12);border:1px solid rgba(74,144,196,0.3);border-radius:3px;color:var(--ltblue);font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.12em;padding:5px 10px;cursor:pointer;text-transform:uppercase;transition:all 0.14s}
+.how-btn:hover{background:rgba(74,144,196,0.25)}
+
+/* HOW-TO POPUP */
+.how-popup{display:none;position:absolute;right:28px;top:42px;width:300px;background:#0D1A2D;border:1px solid rgba(74,144,196,0.4);border-radius:5px;z-index:300;padding:16px 18px;box-shadow:0 8px 32px rgba(0,0,0,0.6)}
+.how-popup p{font-size:12.5px;color:#C5D0DC;line-height:1.6;margin-bottom:9px}
+.how-popup p:last-child{margin-bottom:0}
+.how-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.how-hdr span{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.15em;color:var(--ltblue);text-transform:uppercase}
+.how-close{background:none;border:none;color:var(--grey);cursor:pointer;font-size:13px}
+
+/* CHART PANELS */
+.panel{display:flex;flex-direction:column;padding:12px 24px 14px}
+.panel.hidden{display:none}
+.p-title{font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:0.13em;color:var(--ltblue);text-transform:uppercase}
+.p-sub{font-size:11.5px;color:var(--grey);font-style:italic;margin-top:2px;margin-bottom:5px}
+.canvas-wrap{position:relative;height:380px}
+canvas{width:100%;height:100%;display:block}
+
+/* LEGEND */
+.leg{display:flex;gap:12px;flex-wrap:nowrap;margin-top:3px;margin-bottom:3px;justify-content:center;flex-shrink:0}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:9.5px;color:var(--grey);white-space:nowrap}
+.leg-line{width:20px;height:2px;border-radius:1px}
+.leg-dash{width:20px;height:0;border-top:2px dashed}
+.leg-band{width:20px;height:7px;border-radius:2px;opacity:0.3}
+
+/* METRIC CARDS */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px 24px 10px;background:var(--bg);border-top:1px solid rgba(74,144,196,0.12);flex-shrink:0}
+.card{background:rgba(27,42,74,0.5);border:1px solid rgba(74,144,196,0.12);border-radius:4px;padding:8px 11px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.card.air::before{background:var(--c-air)}.card.ind::before{background:var(--c-ind)}
+.card.sw::before{background:var(--c-sw)}.card.dc::before{background:var(--c-dc)}
+.card-sector{font-family:'JetBrains Mono',monospace;font-size:7.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey);margin-bottom:4px}
+.card-wacc{margin-bottom:2px;line-height:1.1}
+.card-range{font-family:'JetBrains Mono',monospace;font-size:8.5px;margin-bottom:3px}
+.card-eq{font-size:10px;margin-bottom:4px}
+.card-commentary{font-family:'EB Garamond',serif;font-size:11px;color:rgba(197,208,220,0.62);font-style:italic;line-height:1.45;border-top:1px solid rgba(255,255,255,0.06);padding-top:5px;margin-top:3px}
+
+/* METHODOLOGY */
+.meth-wrap{padding:18px 28px 40px}
+.meth-intro{font-size:13.5px;color:var(--grey);font-style:italic;margin-bottom:20px;line-height:1.6}
+.meth-sec{border:1px solid rgba(74,144,196,0.15);border-radius:4px;margin-bottom:10px;overflow:hidden}
+.meth-hdr{background:rgba(27,42,74,0.5);padding:11px 15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+.meth-hdr:hover{background:rgba(27,42,74,0.8)}
+.meth-ttl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ltblue)}
+.meth-stl{font-size:11.5px;color:var(--grey);font-style:italic;margin-top:2px}
+.meth-chev{font-size:9px;color:var(--grey);transition:transform 0.2s}
+.meth-body{display:none;padding:15px 17px 17px;background:rgba(13,21,33,0.4);border-top:1px solid rgba(74,144,196,0.1)}
+.meth-body.open{display:block}
+.meth-body p{font-size:13px;margin-bottom:9px;line-height:1.75}
+.meth-body strong{color:var(--white)}
+.meth-body ul{margin:7px 0 11px 17px}
+.meth-body li{font-size:12.5px;margin-bottom:4px}
+.meth-tbl{width:100%;border-collapse:collapse;font-size:11.5px;margin:10px 0}
+.meth-tbl th{background:rgba(46,95,138,0.4);color:var(--white);padding:6px 9px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.1em;text-transform:uppercase}
+.meth-tbl td{padding:6px 9px;border-bottom:1px solid rgba(255,255,255,0.05);color:#C5D0DC}
+.meth-tbl tr:nth-child(even) td{background:rgba(255,255,255,0.02)}
+.meth-src{font-size:10.5px;color:var(--grey);font-style:italic;border-left:2px solid rgba(74,144,196,0.3);padding-left:9px;margin-top:9px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:10.5px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;padding:9px 13px;margin:9px 0;color:var(--ltblue)}
+
+/* TOOLTIP */
+#tt{position:fixed;background:rgba(8,15,26,0.97);border:1px solid rgba(74,144,196,0.45);border-radius:5px;padding:11px 13px;z-index:500;pointer-events:none;opacity:0;transition:opacity 0.1s;max-width:270px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:'JetBrains Mono',monospace;font-size:10px}
+#tt.vis{opacity:1}
+.tt-date{color:var(--ltblue);margin-bottom:6px;font-size:8.5px;letter-spacing:0.1em}
+.tt-row{display:flex;justify-content:space-between;gap:14px;padding:2px 0}
+.tt-lbl{color:var(--grey)}.tt-val{font-weight:500}
+.tt-note{font-size:9px;color:rgba(127,140,141,0.7);margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);font-style:italic;font-family:'EB Garamond',serif;line-height:1.4}
+
+/* LOADER */
+.loader{position:absolute;inset:0;background:rgba(10,18,32,0.8);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:50}
+.loader.on{opacity:1;pointer-events:all}
+.spin{width:26px;height:26px;border:2px solid rgba(74,144,196,0.2);border-top-color:var(--ltblue);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-txt{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ltblue);letter-spacing:0.1em}
+
+/* FOOTER */
+.footer{padding:8px 26px 14px;font-size:9.5px;color:rgba(127,140,141,0.5);font-style:italic;line-height:1.6;background:var(--bg);border-top:1px solid rgba(255,255,255,0.04)}
+
+/* VIEW TOGGLE (Compare / Detail) */
+.view-toggle{display:flex;gap:4px;margin-left:auto;align-items:center}
+.vt-btn{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.12em;
+  text-transform:uppercase;padding:4px 10px;border:1px solid rgba(74,144,196,0.25);
+  background:transparent;color:var(--grey);cursor:pointer;border-radius:2px;transition:all 0.13s}
+.vt-btn.active{background:rgba(74,144,196,0.2);border-color:var(--ltblue);color:var(--ltblue)}
+.vt-btn:hover:not(.active){border-color:rgba(74,144,196,0.4);color:var(--ltblue)}
+
+/* SECTOR SELECTOR (Detail mode) */
+.sec-btns{display:flex;gap:4px;margin-left:12px}
+.sec-btn{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.1em;
+  text-transform:uppercase;padding:4px 10px;border:1px solid rgba(255,255,255,0.08);
+  background:transparent;cursor:pointer;border-radius:2px;transition:all 0.13s;color:var(--grey)}
+.sec-btn.active{color:var(--white)}
+.sec-btn.air{border-color:rgba(231,76,60,0.4)} .sec-btn.air.active{background:rgba(231,76,60,0.15);color:var(--c-air)}
+.sec-btn.ind{border-color:rgba(201,168,76,0.4)} .sec-btn.ind.active{background:rgba(201,168,76,0.15);color:var(--c-ind)}
+.sec-btn.sw{border-color:rgba(74,144,196,0.4)}  .sec-btn.sw.active{background:rgba(74,144,196,0.15);color:var(--c-sw)}
+.sec-btn.dc{border-color:rgba(142,107,191,0.4)} .sec-btn.dc.active{background:rgba(142,107,191,0.15);color:var(--c-dc)}
+
+/* DETAIL LAYOUT */
+.detail-wrap{display:flex;flex-direction:column;gap:0}
+.detail-chart{position:relative;height:340px}
+.detail-prose{padding:18px 22px 24px;border-top:1px solid rgba(74,144,196,0.12);background:rgba(27,42,74,0.1);flex-shrink:0}
+.detail-prose h3{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.15em;
+  text-transform:uppercase;margin-bottom:10px}
+.dp-big{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;margin-bottom:2px;line-height:1}
+.dp-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--grey);margin-bottom:10px}
+.dp-range{font-family:'JetBrains Mono',monospace;font-size:9px;margin-bottom:10px}
+.dp-eq{font-size:10px;margin-bottom:12px}
+.dp-text{font-family:'EB Garamond',serif;font-size:13px;line-height:1.7;color:rgba(224,232,240,0.8)}
+.dp-text p{margin-bottom:8px}
+
+/* GAP EXPLANATION BLOCK */
+.gap-explain{padding:14px 24px 20px;font-family:'EB Garamond',serif;font-size:13px;
+  line-height:1.75;color:rgba(197,208,220,0.8);
+  border-top:1px solid rgba(74,144,196,0.1)}
+.gap-explain strong{color:var(--white)}
+
+/* COMPARE GRID for WACC/Equity */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:300px 300px;
+  gap:1px;background:rgba(74,144,196,0.08)}
+.compare-cell{background:var(--bg);position:relative;padding:4px 8px;height:300px}
+.compare-cell canvas{width:100%!important;height:100%!important}
+.cc-label{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.1em;
+  text-transform:uppercase;position:absolute;top:6px;left:10px}
+
+/* DISCLAIMER MODAL */
+.disc-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:900;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.disc-overlay.hidden{display:none}
+.disc-box{background:#0D1A2D;border:1px solid rgba(74,144,196,0.5);border-radius:6px;
+  max-width:620px;width:90%;padding:32px 36px;box-shadow:0 20px 60px rgba(0,0,0,0.8)}
+.disc-box h3{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;
+  text-transform:uppercase;color:var(--ltblue);margin-bottom:6px}
+.disc-box h4{font-size:18px;font-weight:500;color:var(--white);margin-bottom:18px;
+  font-family:'EB Garamond',serif}
+.disc-box p{font-size:12.5px;color:rgba(197,208,220,0.8);line-height:1.7;margin-bottom:10px}
+.disc-box p:last-of-type{margin-bottom:20px}
+.disc-box strong{color:var(--white)}
+.disc-accept{background:var(--steel);border:none;border-radius:3px;color:var(--white);
+  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;
+  text-transform:uppercase;padding:10px 24px;cursor:pointer;transition:background 0.15s}
+.disc-accept:hover{background:var(--ltblue)}
+.disc-link{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.1em;
+  text-transform:uppercase;color:rgba(74,144,196,0.6);cursor:pointer;
+  text-decoration:underline;transition:color 0.12s;margin-left:10px}
+.disc-link:hover{color:var(--ltblue)}
+
+/* NTM / LTM TOGGLE */
+.mult-toggle{display:flex;gap:3px;margin-left:8px;align-items:center}
+.mult-btn{font-family:'JetBrains Mono',monospace;font-size:7.5px;letter-spacing:0.1em;
+  text-transform:uppercase;padding:3px 8px;border:1px solid rgba(255,255,255,0.12);
+  background:transparent;color:var(--grey);cursor:pointer;border-radius:2px;transition:all 0.12s}
+.mult-btn.active{background:rgba(201,168,76,0.2);border-color:var(--gold);color:var(--gold)}
+.mult-btn:hover:not(.active){border-color:rgba(201,168,76,0.4);color:var(--gold)}
+.mult-label{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--grey);
+  letter-spacing:0.08em;margin-right:2px}
+</style>
+</head>
+<body>
+
+
+<!-- DISCLAIMER MODAL -->
+<div class="disc-overlay" id="disc-overlay">
+  <div class="disc-box">
+    <h3>Before you proceed</h3>
+    <h4>Educational & Research Use Only</h4>
+    <p>This document was prepared by <strong>Joel Tassinari</strong> for educational and informational purposes only. It does not constitute investment advice, financial advice, trading advice, or any other form of professional advice. Nothing contained herein should be construed as a solicitation or offer to buy or sell any security, financial instrument, or investment product.</p>
+    <p>All model outputs — including WACC sensitivity estimates, equity value impact projections, and Monte Carlo simulation results — are <strong>illustrative and interpretive only</strong>. They are not forecasts, predictions, or guarantees of future results. Past relationships between oil prices and equity valuations are not necessarily indicative of future performance.</p>
+    <p>All data has a hard cutoff of <strong>April 3, 2026</strong>. The model does not update in real time. Geopolitical conditions, market prices, and economic indicators may have changed materially since this date. The author makes no representation as to the accuracy, completeness, or timeliness of any information contained herein.</p>
+    <p><strong>No fiduciary relationship</strong> is created by accessing or reviewing this document. The author expressly disclaims any liability arising from reliance on the information presented. This analysis should not be used as the sole basis for any investment decision. Consult a qualified financial professional before making investment decisions.</p>
+    <button class="disc-accept" onclick="closeDisclaimer()">I understand — Continue</button>
+  </div>
+</div>
+
+<div class="hdr">
+  <div>
+    <h2>2026 Oil Repricing Analysis <span style="font-size:14px;opacity:0.5;font-weight:400">— Joel Tassinari</span></h2>
+    <div class="hdr-sub">Equity-implied vs. actual WTI · WACC sensitivity · Forward simulation through Dec 31, 2026 <span class="disc-link" onclick="openDisclaimer()">· Disclaimer</span></div>
+  </div>
+  <div class="hdr-right">
+    FactSet NTM EV/EBITDA · Jan 1 – Apr 3, 2026<br>
+    10Y Treasury FRED DGS10 · WTI: CME front-month<br>
+    EIA · Dallas Fed · SF Fed · Damodaran · IATA · BLS
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ══ SIDEBAR ══════════════════════════════════════════════════════════ -->
+<div class="sb">
+
+  <div class="sb-sec">
+    <div class="sb-lbl">Repricing Gap · Apr 3, 2026</div>
+    <p style="font-size:10.5px;color:var(--grey);font-style:italic;margin-bottom:9px;line-height:1.5">Implied oil derived from EV/EBITDA compression vs. Jan 2 baseline, net of 10Y rate moves. Gap = actual WTI ($112) minus implied.</p>
+
+    <div class="gap-card" style="border-left-color:var(--c-air)">
+      <div class="gc-sector" style="color:var(--c-air)">Airlines · JETS</div>
+      <div class="gc-implied" style="color:var(--c-air)"><span id="sb-air-implied">$54</span> <span style="font-size:11px;opacity:0.6">implied</span></div>
+      <div class="gc-gap" id="sb-air-gap">Gap: <strong style="color:var(--c-air)">+$58/bbl</strong> unpriced</div>
+      <div class="gc-note">EV/EBITDA flat at 6.1–6.2x despite $55 oil shock. Markets have absorbed essentially none of the disruption in airline multiples.</div>
+    </div>
+
+    <div class="gap-card" style="border-left-color:var(--c-ind)">
+      <div class="gc-sector" style="color:var(--c-ind)">Industrials · XLI</div>
+      <div class="gc-implied" style="color:var(--c-ind)"><span id="sb-ind-implied">$52</span> <span style="font-size:11px;opacity:0.6">implied</span></div>
+      <div class="gc-gap" id="sb-ind-gap">Gap: <strong style="color:var(--c-ind)">+$60/bbl</strong> unpriced</div>
+      <div class="gc-note">Largest absolute gap. Rising energy intensity (BLS: −6.1pp durable mfg) makes this the most exposed sector by operating cost.</div>
+    </div>
+
+    <div class="gap-card" style="border-left-color:var(--c-dc)">
+      <div class="gc-sector" style="color:var(--c-dc)">Data Centers · MSFT/AMZN/META/GOOGL</div>
+      <div class="gc-implied" style="color:var(--c-dc)"><span id="sb-dc-implied">$92</span> <span style="font-size:11px;opacity:0.6">implied</span></div>
+      <div class="gc-gap" id="sb-dc-gap">Gap: <strong style="color:var(--c-dc)">+$20/bbl</strong> unpriced</div>
+      <div class="gc-note" id="sb-dc-note">4-company avg now includes Google. GOOGL multiple compressed 2.4x turns, widening the unpriced gap vs. the prior 3-company estimate.</div>
+    </div>
+
+    <div class="gap-card" style="border-left-color:var(--c-sw)">
+      <div class="gc-sector" style="color:var(--c-sw)">Software · IGV</div>
+      <div class="gc-implied" style="color:var(--c-sw)">$138 <span style="font-size:11px;opacity:0.6">implied</span></div>
+      <div class="gc-gap">Gap: <strong style="color:var(--c-sw)">−$26/bbl</strong> over-corrected</div>
+      <div class="gc-note">IGV compressed beyond oil fundamentals. AI capex concerns and tariff fears added to multiple compression — not an oil story. Strengthens thesis selectivity.</div>
+    </div>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">2026 Forward Scenario</div>
+    <div class="sc-btns" id="sc-btns">
+      <button class="sc-btn" id="btn-bull" onclick="setScen('bull')">
+        <div class="sc-name" style="color:#27AE60">▲ Bull — Resolution</div>
+        <div class="sc-desc">R1:40% · R2:45% · R3:15%</div>
+        <div class="sc-sub">Oil drifts toward $79 by year-end</div>
+      </button>
+      <button class="sc-btn active" id="btn-base" onclick="setScen('base')">
+        <div class="sc-name" style="color:var(--gold)">◆ Base — Disruption Persists</div>
+        <div class="sc-desc">R1:15% · R2:50% · R3:35%</div>
+        <div class="sc-sub">Oil settles ~$86, elevated but easing</div>
+      </button>
+      <button class="sc-btn" id="btn-bear" onclick="setScen('bear')">
+        <div class="sc-name" style="color:var(--red)">▼ Bear — Structural Plateau</div>
+        <div class="sc-desc">R1:5% · R2:20% · R3:75%</div>
+        <div class="sc-sub">Oil remains ~$102, disruption entrenched</div>
+      </button>
+    </div>
+    <button class="run-btn" id="run-btn" onclick="runSim()">▶ Run Simulation</button>
+    <div id="active-lbl" style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--grey);margin-top:5px;font-style:italic">Base scenario active</div>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">Model Parameters</div>
+    <div class="stat-r"><span class="stat-l">Starting price</span><span class="stat-v">$112 WTI</span></div>
+    <div class="stat-r"><span class="stat-l">Floor (2026 trough)</span><span class="stat-v">$56.40/bbl</span></div>
+    <div class="stat-r"><span class="stat-l">Ceiling</span><span class="stat-v">$195/bbl</span></div>
+    <div class="stat-r"><span class="stat-l">Horizon</span><span class="stat-v">Dec 31, 2026</span></div>
+    <div class="stat-r"><span class="stat-l">Paths</span><span class="stat-v">2,000</span></div>
+    <div class="stat-r"><span class="stat-l">Process</span><span class="stat-v">OU mean-reverting</span></div>
+    <div class="stat-r"><span class="stat-l">Vol (realized)</span><span class="stat-v">50% annualized</span></div>
+    <p class="sb-note">Polymarket weights (3-month near-term touch probabilities) set initial regime distribution. Forward paths driven by OU dynamics through Dec 31.</p>
+  </div>
+
+</div><!-- end sidebar -->
+
+<!-- ══ MAIN ══════════════════════════════════════════════════════════════ -->
+<div class="main">
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('gap')">Repricing Gap</button>
+    <button class="tab" onclick="showTab('wacc')">WACC Distribution</button>
+    <button class="tab" onclick="showTab('equity')">Equity Impact</button>
+    <button class="tab" onclick="showTab('meth')">Methodology</button>
+    <button class="how-btn" onclick="toggleHow()">? How to use</button>
+    <div class="how-popup" id="how-popup">
+      <div class="how-hdr"><span>How to use</span><button class="how-close" onclick="toggleHow()">✕</button></div>
+      <p><strong style="color:var(--white)">Tab 1 — Repricing Gap:</strong> Shows actual WTI (gold) vs. what each sector's equity multiples imply about oil. The gap between the gold line and the dashed sector lines is the unpriced exposure. Hover any date for all four implied values.</p>
+      <p><strong style="color:var(--white)">Tab 2 — WACC Distribution:</strong> Shows how cost of capital responds to the forward oil distribution. Hover any box plot for detailed percentile data. Cards at bottom synthesize gap + simulation.</p>
+      <p><strong style="color:var(--white)">Tab 3 — Equity Impact:</strong> DCF translation of WACC changes to equity value. Interpretive layer — not a forecast.</p>
+      <p><strong style="color:var(--white)">Scenarios:</strong> Select Bull/Base/Bear and click Run Simulation. Updates Tabs 1 (forward fan), 2, and 3 simultaneously.</p>
+    </div>
+  </div>
+
+  <!-- TAB 1: REPRICING GAP -->
+  <div class="panel" id="panel-gap">
+    <div style="display:flex;align-items:center;margin-bottom:4px">
+      <div>
+        <div class="p-title">Actual WTI vs. Equity-Implied WTI · Jan 1 – Dec 31, 2026</div>
+        <div class="p-sub" style="margin-bottom:0">Gold = WTI daily close · Dashed = oil implied by sector EV/EBITDA · Shaded = unpriced gap · Right of marker = forward simulation</div>
+      </div>
+      <div class="mult-toggle" style="margin-left:auto;flex-shrink:0">
+        <span class="mult-label">Basis:</span>
+        <button class="mult-btn active" id="ntm-btn" onclick="setMultiple('ntm')">NTM</button>
+        <button class="mult-btn" id="ltm-btn" onclick="setMultiple('ltm')">LTM</button>
+      </div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="cv-gap"></canvas>
+      <div class="loader" id="load-gap"><div class="spin"></div><div class="load-txt">Running 2,000 paths...</div></div>
+    </div>
+    <div class="leg">
+      <div class="leg-item"><div class="leg-line" style="background:var(--c-wti);height:3px"></div>WTI Actual</div>
+      <div class="leg-item"><div class="leg-dash" style="border-color:var(--c-air)"></div>Airlines</div>
+      <div class="leg-item"><div class="leg-dash" style="border-color:var(--c-ind)"></div>Industrials</div>
+      <div class="leg-item"><div class="leg-dash" style="border-color:var(--c-dc)"></div>Data Centers</div>
+      <div class="leg-item"><div class="leg-dash" style="border-color:var(--c-sw)"></div>Software</div>
+      <div class="leg-item"><div class="leg-band" style="background:var(--c-wti)"></div>P25–P75 sim</div>
+      <div class="leg-item"><div style="width:20px;height:0;border-top:2.5px solid var(--gold)"></div>Median sim</div>
+    </div>
+    <div class="gap-explain" id="gap-explain">
+      <p style="margin-bottom:12px">Since opening 2026 at $57/bbl, WTI crude has undergone a violent 96% appreciation, surging to $112/bbl by early April as the Hormuz disruption intensified. This rapid ascent has created a profound valuation gap between physical commodity reality and equity market sentiment. While the gold WTI line has nearly doubled, the equity-implied oil prices for <strong style="color:var(--c-air)">Airlines</strong> and <strong style="color:var(--c-ind)">Industrials</strong> have remained virtually stagnant — signaling a dangerous level of complacency. These sectors are effectively trading on stale energy assumptions, leaving them with an unpriced exposure of <strong style="color:var(--c-air)">$<span id="gap-air-val">58</span>/bbl (Airlines)</strong> and <strong style="color:var(--c-ind)">$<span id="gap-ind-val">60</span>/bbl (Industrials)</strong>. Unless WTI undergoes rapid mean reversion, these sectors face significant catch-up risk — earnings multiples must eventually compress to reflect eroded margins.</p>
+      <p style="margin-bottom:12px">The geopolitical backdrop as of early April remains acutely uncertain. In a primetime address on April 2, President Trump declared that the month-long military campaign in Iran is "nearing completion," claiming the Iranian Navy and Air Force have been effectively neutralized. Yet in the same address, he threatened intensified strikes over the coming weeks targeting missile production infrastructure — a direct contradiction that rattled oil markets overnight. He simultaneously suggested secret negotiations with an emerging Iranian leadership are making progress, while threatening to reduce Iran to rubble if nuclear development continues. U.S. allies were told to secure the Strait themselves if they want continued oil access, signaling an impending American withdrawal. Markets interpreted the speech as every scenario simultaneously: resolution, escalation, and abandonment — which is precisely why the forward simulation fan is as wide as it is.</p>
+      <p style="margin-bottom:12px">In contrast, the <strong style="color:var(--c-sw)">Software</strong> sector's implied price over-corrected sharply upward, peaking near $160/bbl in February before partially retracing. This decoupling reflects macro stressors beyond oil — AI capex uncertainty and tariff fears drove additional multiple compression unrelated to energy fundamentals. <strong style="color:var(--c-dc)">Data Centers</strong> (now including Google alongside Microsoft, Amazon, and Meta) show a revised gap of approximately $20/bbl — meaningfully wider once Google's 2.4x multiple compression is incorporated into the average.</p>
+      <p>Looking forward, the Monte Carlo simulation establishes a <strong>median year-end expectation of <span id="gap-median-val" style="color:var(--gold)">—</span> WTI</strong> under the <strong id="gap-scen-name">Base</strong> scenario — elevated but below today's spot, implying partial Hormuz normalization. The distribution is unusually wide: the P95 upper bound reaches <strong style="color:var(--red)" id="gap-p95-val">—</strong>, a level that would represent a historically unprecedented sustained oil price and a catastrophic repricing event for sectors like Airlines that have yet to absorb even the current $112 reality into their equity multiples. The P5 lower bound implies meaningful relief — but only if military de-escalation materializes faster than current signals suggest.</p>
+    </div>
+  </div>
+
+  <!-- TAB 2: WACC DISTRIBUTION -->
+  <div class="panel hidden" id="panel-wacc">
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-bottom:6px">
+      <div>
+        <div class="p-title" style="margin-bottom:2px">WACC Sensitivity — Total Expansion from Jan 2, 2026</div>
+        <div class="p-sub" style="margin-bottom:0">Zero = pre-conflict baseline · Above zero = expansion · Below = relief · Hover for detail</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <div class="view-toggle" id="wacc-toggle">
+          <button class="vt-btn active" onclick="setWaccView('compare')" id="wv-compare">Compare</button>
+          <button class="vt-btn" onclick="setWaccView('detail')" id="wv-detail">Detail</button>
+        </div>
+        <div class="sec-btns" id="wacc-sec-btns" style="display:none">
+          <button class="sec-btn air active" onclick="setWaccSec('airlines')" id="ws-airlines">Airlines</button>
+          <button class="sec-btn ind" onclick="setWaccSec('industrial')" id="ws-industrial">Industrials</button>
+          <button class="sec-btn sw" onclick="setWaccSec('software')" id="ws-software">Software</button>
+          <button class="sec-btn dc" onclick="setWaccSec('datacenter')" id="ws-datacenter">Data Centers</button>
+        </div>
+      </div>
+    </div>
+    <!-- Compare view -->
+    <div id="wacc-compare-view" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="compare-grid" id="wacc-grid">
+        <div class="compare-cell"><div class="cc-label" style="color:var(--c-air)">Airlines</div><canvas id="cv-wacc-air"></canvas></div>
+        <div class="compare-cell"><div class="cc-label" style="color:var(--c-ind)">Industrials</div><canvas id="cv-wacc-ind"></canvas></div>
+        <div class="compare-cell"><div class="cc-label" style="color:var(--c-sw)">Software</div><canvas id="cv-wacc-sw"></canvas></div>
+        <div class="compare-cell"><div class="cc-label" style="color:var(--c-dc)">Data Centers</div><canvas id="cv-wacc-dc"></canvas></div>
+      </div>
+      <div class="leg" style="margin-top:4px">
+        <div class="leg-item"><div style="width:18px;height:7px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.22);border-radius:2px"></div>IQR P25–P75</div>
+        <div class="leg-item"><div style="width:18px;height:0;border-top:2px solid #E74C3C"></div>Expansion</div>
+        <div class="leg-item"><div style="width:18px;height:0;border-top:2px solid #27AE60"></div>Compression</div>
+        <div class="leg-item" style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--grey)">M3=Jul · M6=Oct · M9=Dec 31 · Tick=Median · Hover for detail</div>
+      </div>
+    </div>
+    <!-- Detail view -->
+    <div id="wacc-detail-view" style="flex:1;display:none;min-height:0" class="detail-wrap">
+      <div class="detail-chart"><canvas id="cv-wacc-detail"></canvas></div>
+      <div class="detail-prose" id="wacc-prose">
+        <h3 id="wacc-prose-sector" style="color:var(--c-air)">Airlines · JETS</h3>
+        <div class="dp-big" id="wacc-prose-big">—</div>
+        <div class="dp-sub" id="wacc-prose-sub">bps total WACC · year-end</div>
+        <div class="dp-range" id="wacc-prose-range">—</div>
+        <div class="dp-eq" id="wacc-prose-eq">—</div>
+        <div class="dp-text" id="wacc-prose-text">Run simulation to generate analysis.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: EQUITY IMPACT -->
+  <div class="panel hidden" id="panel-equity">
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-bottom:6px">
+      <div>
+        <div class="p-title" style="margin-bottom:2px">Implied Equity Value Impact — DCF Translation from Jan 2 Baseline</div>
+        <div class="p-sub" style="margin-bottom:0">Zero = Jan 2 pre-conflict · Box plots = distribution of equity impact · 100bps WACC ↑ ≈ 17% equity ↓ · Interpretive layer</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <div class="view-toggle" id="equity-toggle">
+          <button class="vt-btn active" onclick="setEqView('compare')" id="ev-compare">Compare</button>
+          <button class="vt-btn" onclick="setEqView('detail')" id="ev-detail">Detail</button>
+        </div>
+        <div class="sec-btns" id="eq-sec-btns" style="display:none">
+          <button class="sec-btn air active" onclick="setEqSec('airlines')" id="es-airlines">Airlines</button>
+          <button class="sec-btn ind" onclick="setEqSec('industrial')" id="es-industrial">Industrials</button>
+          <button class="sec-btn sw" onclick="setEqSec('software')" id="es-software">Software</button>
+          <button class="sec-btn dc" onclick="setEqSec('datacenter')" id="es-datacenter">Data Centers</button>
+        </div>
+      </div>
+    </div>
+    <!-- Compare view -->
+    <div id="eq-compare-view" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="compare-grid" id="eq-grid">
+        <div class="compare-cell"><div class="cc-label" style="color:var(--c-air)">Airlines</div><canvas id="cv-eq-air"></canvas></div>
+        <div class="compare-cell"><div class="cc-label" style="color:var(--c-ind)">Industrials</div><canvas id="cv-eq-ind"></canvas></div>
+        <div class="compare-cell"><div class="cc-label" style="color:var(--c-sw)">Software</div><canvas id="cv-eq-sw"></canvas></div>
+        <div class="compare-cell"><div class="cc-label" style="color:var(--c-dc)">Data Centers</div><canvas id="cv-eq-dc"></canvas></div>
+      </div>
+      <div class="leg" style="margin-top:4px">
+        <div class="leg-item"><div style="width:18px;height:7px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.22);border-radius:2px"></div>IQR P25–P75</div>
+        <div class="leg-item"><div style="width:18px;height:0;border-top:2px dashed #E74C3C"></div>Worst-case</div>
+        <div class="leg-item"><div style="width:18px;height:0;border-top:2px dashed #27AE60"></div>Best-case</div>
+        <div class="leg-item" style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--grey)">M3=Jul · M6=Oct · M9=Dec 31 · capped ±100% · Hover for detail</div>
+      </div>
+    </div>
+    <!-- Detail view -->
+    <div id="eq-detail-view" style="flex:1;display:none;min-height:0" class="detail-wrap">
+      <div class="detail-chart"><canvas id="cv-eq-detail"></canvas></div>
+      <div class="detail-prose" id="eq-prose">
+        <h3 id="eq-prose-sector" style="color:var(--c-air)">Airlines · JETS</h3>
+        <div class="dp-big" id="eq-prose-big">—</div>
+        <div class="dp-sub" id="eq-prose-sub">% equity impact · year-end</div>
+        <div class="dp-range" id="eq-prose-range">—</div>
+        <div class="dp-text" id="eq-prose-text">Run simulation to generate analysis.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: METHODOLOGY -->
+  <div class="panel hidden" id="panel-meth" style="padding:0">
+    <div class="meth-wrap">
+      <p class="meth-intro">Full methodology, data sources, and interpretation guide. Each section is collapsible.</p>
+
+      <!-- SECTION 1: CONTEXT & REPRICING GAP -->
+      <div class="meth-sec">
+        <div class="meth-hdr" onclick="toggleMeth('m1')">
+          <div><div class="meth-ttl">1 · Context & The Repricing Gap</div><div class="meth-stl">Geopolitical backdrop · EV/EBITDA methodology · Rate isolation · Software anomaly</div></div>
+          <span class="meth-chev" id="m1-chev">▶</span>
+        </div>
+        <div class="meth-body" id="m1">
+          <p>This analysis was constructed against a live geopolitical disruption rather than a hypothetical one. As of April 3, 2026, WTI crude settled at approximately $112/barrel — representing a 96% increase since the beginning of the year — following military action in the Middle East and a material reduction in petroleum shipments through the Strait of Hormuz. The EIA's March 10, 2026 Short-Term Energy Outlook revised its 2026 Brent forecast upward by 37% relative to the prior month's publication, while simultaneously projecting U.S. crude production at 13.6 mmbpd, an all-time record.</p>
+          <p>This coexistence of record domestic output and explosive price appreciation is the Fortress America paradox at the center of this analysis. Marginal pricing on global crude markets means that U.S. production volume has no bearing on the domestic cost of capital — oil is priced globally, and the cost of money follows the oil price regardless of where the barrels are drilled.</p>
+          <p><strong>What the repricing gap measures:</strong> The divergence between the oil price implied by current equity valuations and the actual WTI spot price. A positive gap means equities are discounting oil as though the disruption hasn't happened. This is the "stale assumptions" problem — sector multiples haven't compressed to reflect the new cost-of-capital reality.</p>
+          <p><strong>Step 1 — Baseline:</strong> January 2, 2026 is the pre-conflict baseline date. WTI closed at $57.33 that day. FactSet NTM EV/EBITDA multiples for JETS, XLI, IGV, META, AMZN, MSFT, and GOOGL (Alphabet A) on that date anchor all calculations.</p>
+          <p><strong>Step 2 — Implied WACC from EV/EBITDA:</strong> Using a Gordon Growth perpetuity approximation with g = 5% (appropriate for EBITDA-level, not equity-level, growth):</p>
+          <div class="formula">WACC = (1 + g) / EV/EBITDA + g</div>
+          <p>The delta in WACC between the baseline date and any subsequent date captures how much the market's implied cost of capital has moved.</p>
+          <p><strong>Step 3 — Rate isolation:</strong> The 10Y Treasury moved from 4.19% (Jan 2) to 4.31% (Apr 2) — a 12bps independent move. This must be stripped from the total WACC delta to isolate the oil-specific component. Per sector: Rate WACC Δ = ΔRate × (1 − D/(D+E) × 21% tax rate). The residual is the oil-specific repricing.</p>
+          <p><strong>Step 4 — Back to oil:</strong> Oil-specific WACC Δ ÷ sector sensitivity coefficient (bps per $10/bbl) × $10 + $57.33 baseline = implied oil price. The gap to actual WTI ($112) is the unpriced exposure.</p>
+          <p><strong>NTM vs. LTM toggle:</strong> The chart offers both Next-Twelve-Months (forward consensus) and Last-Twelve-Months (trailing actuals) EV/EBITDA. For Airlines and Industrials the implied oil gap is virtually identical on both bases (~$58 and ~$60 respectively) — confirming the gap is not an artifact of analyst forecast assumptions. For Software, LTM shows a small positive gap ($9) vs. NTM over-correction (−$26), because forward estimates were cut more aggressively than trailing actuals reflect. For Data Centers, LTM shows a wider gap ($34) than NTM ($20) for the opposite reason.</p>
+          <p><strong>The software anomaly:</strong> IGV's implied oil sits at ~$138 — above actual WTI. EV/EBITDA multiples compressed more than oil fundamentals alone explain. AI capex uncertainty, hardware tariff risk, and broader growth-multiple contraction drove additional compression through non-oil channels. This is explicitly acknowledged and does not undermine the thesis — it demonstrates that the model is not mechanically biased upward. The sectors with the largest positive gaps (airlines, industrials) are precisely the ones with direct operating cost exposure to oil, not growth-stock concerns.</p>
+          <div class="meth-src">Sources: FactSet NTM EV/EBITDA (Jan 1 – Apr 3, 2026): JETS, XLI, IGV, META, AMZN, MSFT, GOOGL · FRED DGS10 10Y Treasury · CME WTI CL00-USA daily close · EIA STEO March 10, 2026</div>
+        </div>
+      </div>
+
+      <!-- SECTION 2: OIL PRICE REGIMES -->
+      <div class="meth-sec">
+        <div class="meth-hdr" onclick="toggleMeth('m2')">
+          <div><div class="meth-ttl">2 · Oil Price Regime Parameters</div><div class="meth-stl">EIA STEO anchors · Dallas Fed scenarios · Polymarket probability weights · Current context</div></div>
+          <span class="meth-chev" id="m2-chev">▶</span>
+        </div>
+        <div class="meth-body" id="m2">
+          <p>Three regimes are defined, each anchored to a primary source. These are not arbitrary scenarios — each target price is directly cited from a contemporaneous publication or observable market data.</p>
+          <table class="meth-tbl">
+            <tr><th>Regime</th><th>Target</th><th>Source anchor</th><th>Interpretation</th></tr>
+            <tr><td>R1 — Quick Resolution</td><td>$67 WTI</td><td>EIA March 2026 STEO 2027 normalization forecast ($64/bbl Brent + $3 WTI differential)</td><td>Strait of Hormuz reopens, conflict de-escalates, oil retraces toward 2025 levels over 2026</td></tr>
+            <tr><td>R2 — Prolonged Disruption</td><td>$85 WTI</td><td>Dallas Fed Aug 2025 "Resurgence of Middle East Conflict" scenario midpoint (~$81/bbl WTI peak)</td><td>Elevated but easing — sustained geopolitical tension without further escalation</td></tr>
+            <tr><td>R3 — Structural Plateau</td><td>$110 WTI</td><td>Dallas Fed Aug 2025 "Strait of Hormuz Closure" peak ($100/bbl) + current spot overshoot ($112)</td><td>Disruption entrenched; prices remain at or above current spot through year-end</td></tr>
+          </table>
+          <p><strong>Critical calibration note:</strong> The Dallas Fed's "severe" Hormuz closure scenario projected WTI peaking at $100/bbl by December 2025 — a figure that was exceeded in actual markets by April 2026, four months ahead of schedule and $12/bbl above the projection. The Dallas Fed severe scenario is therefore now a lower bound, not an upper bound, for Regime 3.</p>
+          <p><strong>Regime probability weights</strong> are derived from the Polymarket prediction market "Will Crude Oil (CL) hit __ by end of June?" (market ID: cl-hit-jun-2026), retrieved via CLOB API on April 3, 2026. Total historical volume: $7.19M USDC. These are <em>touch probabilities</em> — the probability that oil reaches a given level at any point through June 30, not the probability of residing there. A conservatism discount is applied to convert to regime weights. The three scenario presets use: Bull 40/45/15 · Base 15/50/35 · Bear 5/20/75. Key asymmetry: market assigns 25% probability to touching $150 vs. 6.5% to touching $55 — a 3.8× right-tail skew.</p>
+          <p><strong>Markets already resolved YES before retrieval:</strong> HIGH $90, HIGH $100, HIGH $105, HIGH $110, LOW $90 — confirming that Regime 3 entry conditions were satisfied in real time prior to model construction.</p>
+          <div class="meth-src">Sources: EIA STEO March 10, 2026 · Dallas Fed "Middle East Geopolitical Risk," Spellman & Zhou, Aug 21, 2025 · Polymarket cl-hit-jun-2026 CLOB API, April 3, 2026 · CBOE OVX April 1, 2026</div>
+        </div>
+      </div>
+
+      <!-- SECTION 3: FORWARD SIMULATION -->
+      <div class="meth-sec">
+        <div class="meth-hdr" onclick="toggleMeth('m3')">
+          <div><div class="meth-ttl">3 · Forward Simulation — Ornstein-Uhlenbeck Process</div><div class="meth-stl">OU mean reversion · Volatility calibration · Markov transitions · 2026 scope</div></div>
+          <span class="meth-chev" id="m3-chev">▶</span>
+        </div>
+        <div class="meth-body" id="m3">
+          <p>The forward simulation covers April 3 to December 31, 2026 — 9 monthly steps, 2,000 paths. This is explicitly a 2026 analysis. The simulation does not extrapolate beyond year-end.</p>
+          <p><strong>Stochastic process — Ornstein-Uhlenbeck on log price:</strong> Unlike Geometric Brownian Motion (which has no equilibrium pull), the OU process incorporates the empirically observed tendency of commodity prices to revert toward fundamental levels within regimes. The discrete approximation used here:</p>
+          <div class="formula">logP(t+dt) = logP(t) + κ·(logTarget − logP(t))·dt + σ·√dt·Z</div>
+          <p>Where κ is the speed of mean reversion, Target is the regime-specific price anchor, σ is realized volatility, and Z ~ N(0,1). This is the standard formulation for commodity price simulation in financial research.</p>
+          <p><strong>Reversion speed (κ) calibration:</strong> κ = 0.40 for Regime 1 (fast reversion — resolution scenario prices normalize relatively quickly), κ = 0.30 for Regime 2 (moderate — elevated plateau with gradual easing), κ = 0.18 for Regime 3 (slow — entrenched disruption, prices remain near current levels). These values imply that Regime 1 paths close approximately 60% of the gap to target over 24 months; Regime 3 closes approximately 30%.</p>
+          <p><strong>Volatility:</strong> 50% annualized realized volatility, calibrated to the sustained CBOE OVX range observed during the 2022 Ukraine disruption period (~47–52% annualized). The current OVX reading of 91.8% (April 1, 2026) substantially overstates expected realized volatility because it includes a large variance risk premium — the market is paying for tail insurance, not predicting that prices will realize 92% vol. The 50% figure is the appropriate realized-vol anchor. Volatility decays linearly to regime-specific floors over 9 months (R1: 28%, R2: 35%, R3: 40%). Price floor: $56.40 (2026 intra-year trough, January 7). Price ceiling: $195.</p>
+          <p><strong>Regime transitions:</strong> Symmetric Markov matrix with 80% self-transition probability per monthly step. Each regime transitions to others proportionally to their initial weights. This produces a stationary distribution that converges to the initial weights over time — the symmetric assumption avoids embedding directional bias into the dynamics beyond what the initial weights already express.</p>
+          <p><strong>Path count and convergence:</strong> 2,000 paths is standard for financial Monte Carlo at this complexity level. Convergence testing shows that key statistics (median path, P5/P95 percentiles) stabilize at approximately 1,500 paths. The 2,000-path count provides a margin of safety without material computational cost.</p>
+          <div class="meth-src">Sources: CBOE OVX April 1, 2026 · Dallas Fed scenarios Aug 2025 · EIA STEO March 2026 · Polymarket weights April 3, 2026</div>
+        </div>
+      </div>
+
+      <!-- SECTION 4: WACC DERIVATIONS -->
+      <div class="meth-sec">
+        <div class="meth-hdr" onclick="toggleMeth('m4')">
+          <div><div class="meth-ttl">4 · WACC Sensitivity Derivations</div><div class="meth-stl">Rate transmission channel · IATA fuel cost · BLS energy intensity · Damodaran leverage · Full arithmetic</div></div>
+          <span class="meth-chev" id="m4-chev">▶</span>
+        </div>
+        <div class="meth-body" id="m4">
+          <p>WACC sensitivity coefficients (bps per $10/barrel oil increase) are derived from three compounding channels. All inputs are verified against primary sources. Derived figures are explicitly labeled.</p>
+          <p><strong>Channel 1 — Rate channel (universal, all sectors):</strong> Oil shocks raise headline CPI, which raises inflation expectations, which causes the Federal Reserve to maintain or tighten rates, which raises the risk-free rate embedded in every sector's WACC. SF Fed Economic Letter (December 2025) documents this transmission: a 3% oil price surprise raises 2-year Treasury yields by 4.5bps in the current regime — more than 3× the pre-2021 sensitivity, representing a structural break post-2022. Derivation: at $70 base price, a $10 increase = 14.3% move. Linear extrapolation: 4.5 × (14.3/3.0) ≈ 21bps gross rate impact. Discounted to ~15bps to reflect non-linearity at large price moves. This is the floor sensitivity — all sectors receive at least this component.</p>
+          <p><strong>Channel 2 — Operating cost channel (Airlines, Industrials):</strong> Direct energy costs embedded in P&L. Quantified using BLS Total Factor Productivity data (Table 11, December 2025 release, covering 2024 data) and IATA industry statistics.</p>
+          <p><strong>Channel 3 — Leverage amplification:</strong> Higher debt costs and refinancing risk compound the rate channel. Leverage ratios from Damodaran January 2026 sector data.</p>
+          <table class="meth-tbl">
+            <tr><th>Sector</th><th>ETF Proxy</th><th>Sensitivity</th><th>Baseline WACC</th><th>D/(D+E)</th><th>Primary drivers</th></tr>
+            <tr><td>Airlines</td><td>JETS</td><td>90bps/$10</td><td>6.72%</td><td>47.7%</td><td>Fuel = 26.4% of operating expenses (IATA 2025); 2026 crack spread $26/bbl vs. $12 in 2025 makes jet fuel structurally sticky even if Brent moderates. Total industry fuel bill: $252B forecast 2026. EBIT margin 6.6% — thin enough that a $10 oil move is highly material. Rate channel + operating cost + leverage amplification.</td></tr>
+            <tr><td>Industrials</td><td>XLI</td><td>42bps/$10</td><td>7.70%</td><td>12.8%</td><td>BLS KLEMS 2024: durable manufacturing energy intensity contribution = −6.1pp (sector becoming more energy-intensive per unit of output). Lower leverage than airlines limits the debt refinancing channel but the operating cost exposure is amplified by worsening energy intensity. Rate channel + operating cost.</td></tr>
+            <tr><td>Software</td><td>IGV</td><td>20bps/$10</td><td>9.34%</td><td>5.3%</td><td>BLS KLEMS 2024: information sector energy intensity = +6.7pp (improving efficiency). No meaningful direct energy costs. Sensitivity is almost entirely the rate channel — oil reprices inflation expectations which reprice the discount rate applied to long-duration growth assets. Low leverage further limits the debt cost channel.</td></tr>
+            <tr><td>Data Centers</td><td>MSFT/AMZN/META/GOOGL avg</td><td>40bps/$10</td><td>7.83%</td><td>20.1%</td><td>Rate channel + power cost channel (electricity prices partially track natural gas and crude). Massive capital expenditure programs create significant debt refinancing exposure. Now includes Alphabet (GOOGL) — baseline EV/EBITDA 17.61x, Apr 3 EV/EBITDA 15.24x, compression of 2.37x turns, widening implied gap from $13 to $20/bbl. Power-crude linkage is the least verified component — flagged as partially derived.</td></tr>
+          </table>
+          <p><strong>Already-triggered component:</strong> The $57.33 → $112 move (+$54.67) has already triggered WACC expansion of approximately: Airlines +492bps, Industrials +230bps, Software +110bps, Data Centers +219bps. These are fixed, already-in-the-system effects regardless of where oil goes from here. The forward simulation measures additional or reversing pressure from $112.</p>
+          <div class="meth-src">Sources: SF Fed Economic Letter Dec 2025 (frbsf.org) · IATA Global Outlook Dec 2025 · IATA Fuel Fact Sheet Dec 2025 (Platts/S&P) · BLS TFP Table 11 Dec 2025 (2024 data; 12-month lag, 2025 data due Dec 2026) · Damodaran Cost of Capital by Sector Jan 2026 (stern.nyu.edu/~adamodar)</div>
+        </div>
+      </div>
+
+      <!-- SECTION 5: EQUITY TRANSLATION & LIMITATIONS -->
+      <div class="meth-sec">
+        <div class="meth-hdr" onclick="toggleMeth('m5')">
+          <div><div class="meth-ttl">5 · Equity Translation, Limitations & Full Bibliography</div><div class="meth-stl">DCF mechanics · Key caveats · What this model does not capture · Primary sources</div></div>
+          <span class="meth-chev" id="m5-chev">▶</span>
+        </div>
+        <div class="meth-body" id="m5">
+          <p><strong>Equity translation mechanics:</strong> WACC changes are converted to equity value impact using a standardized DCF sensitivity. A company with long-run growth g = 8% and a terminal multiple of 25× has an effective equity duration of approximately 12 years. At this duration, 100bps WACC expansion reduces equity value by approximately 17%.</p>
+          <div class="formula">Equity Impact ≈ −17% per +100bps WACC · Capped at ±100%</div>
+          <p>This is a pure discount rate effect — it assumes earnings estimates are unchanged. In practice, airlines and industrials face a second hit: higher fuel and energy costs will directly compress earnings estimates, amplifying the equity headwind beyond what WACC alone implies. The equity impact shown here is therefore a conservative (understated) estimate of the real headwind for these sectors. Paths exceeding ~500bps WACC expansion imply financial distress rather than valuation compression; treat Bear scenario P95 tails as stress scenarios, not base cases.</p>
+          <p><strong>Key limitations:</strong></p>
+          <ul>
+            <li>WACC sensitivities are derived estimates, not regression-estimated from time-series data. A more rigorous approach would panel-regress sector WACCs on lagged oil prices. The derivations are transparent and defensible but involve judgment at the aggregation step.</li>
+            <li>The EV/EBITDA → implied oil inversion assumes Gordon Growth applies and that all multiple compression is discount-rate-driven. Earnings revisions compress multiples independently — the implied oil gap may understate the true unpriced exposure.</li>
+            <li>Polymarket weights are 3-month touch probabilities, not 9-month regime residence probabilities. The conversion to regime weights applies a conservatism discount — different reasonable conversion approaches shift weights by several percentage points.</li>
+            <li>BLS TFP data has a 12-month publication lag. December 2025 release covers 2024. 2025 energy intensity data is unavailable until December 2026.</li>
+            <li>Data center power-crude linkage is the least-verified sensitivity component. The electricity → natural gas → crude price chain is real but the pass-through coefficient has not been independently estimated for this document.</li>
+            <li>The model does not capture hedging activity, demand destruction feedback, or second-order macroeconomic effects of sustained high oil prices on GDP and corporate earnings broadly.</li>
+          </ul>
+          <p><strong>Primary sources verified against original publications, all retrieved April 3, 2026:</strong></p>
+          <ul>
+            <li>FactSet NTM EV/EBITDA, P/E, P/B: JETS, XLI, IGV, META Platforms A, Amazon.com, Microsoft, Alphabet A (Google) — January 1 to April 3, 2026</li>
+            <li>CME WTI front-month continuous futures (CL00-USA), daily settlement — January 1 to April 2, 2026</li>
+            <li>FRED DGS10: 10-Year Treasury Constant Maturity Rate — April 2025 to April 2026. fred.stlouisfed.org</li>
+            <li>U.S. Energy Information Administration. Short-Term Energy Outlook, March 10, 2026. eia.gov/outlooks/steo/</li>
+            <li>Federal Reserve Bank of Dallas. "Middle East Geopolitical Risk Modestly Affects Inflation and Inflation Expectations." Spellman, I. and Zhou, X. August 21, 2025. dallasfed.org/research/economics/2025/0821</li>
+            <li>Federal Reserve Bank of San Francisco. "The Changing Sensitivity of Interest Rates to Oil Supply News." Economic Letter, December 2025. frbsf.org</li>
+            <li>Federal Reserve Bank of Dallas. Energy Survey Q1 2026. dallasfed.org/research/surveys/des/2026/2601</li>
+            <li>Damodaran, A. Cost of Capital by Sector (US). January 2026. stern.nyu.edu/~adamodar/New_Home_Page/datafile/wacc.html</li>
+            <li>U.S. Bureau of Labor Statistics. "Total Factor Productivity for Major Industries — 2024." Table 11: Industry Contributions to Private Business Output by Component. December 2025. bls.gov/news.release/prod5.nr0.htm</li>
+            <li>IATA Sustainability and Economics. Global Outlook for Air Transport. December 2025. iata.org</li>
+            <li>IATA Sustainability and Economics. Fuel Fact Sheet. December 2025. Data: Platts/S&P Global Commodity Insights. iata.org/en/iata-repository/pressroom/fact-sheets/fact-sheet-fuel/</li>
+            <li>CBOE. Crude Oil Volatility Index (OVX). April 1, 2026. cboe.com/tradable_products/oil_volatility/</li>
+            <li>Polymarket. "Will Crude Oil (CL) hit __ by end of June?" Market ID: cl-hit-jun-2026. $7.19M volume. April 3, 2026. polymarket.com/event/cl-hit-jun-2026</li>
+            <li>RSM US Economics. "The U.S. is in a Better Position to Endure an Oil and Gas Shock." July 22, 2025. rsmus.com</li>
+            <li>Presno, I. and Prestipino, A. "Oil Price Shocks and Inflation in a DSGE Model of the Global Economy." FEDS Notes. Federal Reserve Board. August 2, 2024.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</div><!-- end main -->
+</div><!-- end wrap -->
+
+<div class="footer">
+  Implied oil price methodology: FactSet NTM EV/EBITDA → Gordon Growth WACC (g=5%) → delta vs. Jan 2 baseline → strip 10Y rate component (FRED DGS10) → back-calculate oil via sector sensitivity coefficients.
+  WACC sensitivities: Airlines 90bps/$10 (IATA 26.4% fuel share, Damodaran 47.7% leverage, SF Fed rate channel), Industrials 42bps/$10 (BLS KLEMS −6.1pp energy intensity + rate channel),
+  Software 20bps/$10 (rate channel only, BLS +6.7pp efficiency), Data Centers 40bps/$10 (rate channel + power cost proxy; 4-company avg: MSFT/AMZN/META/GOOGL). Equity translation: 100bps WACC ↑ ≈ 17% equity ↓ (g=8%, terminal 25×), capped ±100%. Interpretive layer — not a forecast.
+</div>
+
+<div id="tt"></div>
+
+<script>
+// ══ DATA ═══════════════════════════════════════════════════════════════════
+const BASELINE_OIL = 57.33;
+const CURRENT_OIL  = 112.0;
+const SIM_FLOOR    = 56.40;
+const SIM_CEIL     = 195;
+const BPS_TO_EQ    = 0.17 / 100;
+
+// Already-triggered WACC expansion from conflict start (Jan 2 $57.33 → current $112)
+// Fixed component — same regardless of scenario
+const ALREADY_TRIGGERED = {
+  airlines:   492,  // ($112-$57.33)/10 * 90bps
+  industrial: 230,  // ($112-$57.33)/10 * 42bps
+  software:   110,  // ($112-$57.33)/10 * 20bps
+  datacenter: 219,  // ($112-$57.33)/10 * 40bps
+};
+
+// Historical FactSet dates (Jan 1 – Apr 3, 2026, 67 trading days)
+const FS_DATES = ['2026-01-01','2026-01-02','2026-01-05','2026-01-06','2026-01-07','2026-01-08','2026-01-09','2026-01-12','2026-01-13','2026-01-14','2026-01-15','2026-01-16','2026-01-19','2026-01-20','2026-01-21','2026-01-22','2026-01-23','2026-01-26','2026-01-27','2026-01-28','2026-01-29','2026-01-30','2026-02-02','2026-02-03','2026-02-04','2026-02-05','2026-02-06','2026-02-09','2026-02-10','2026-02-11','2026-02-12','2026-02-13','2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20','2026-02-23','2026-02-24','2026-02-25','2026-02-26','2026-02-27','2026-03-02','2026-03-03','2026-03-04','2026-03-05','2026-03-06','2026-03-09','2026-03-10','2026-03-11','2026-03-12','2026-03-13','2026-03-16','2026-03-17','2026-03-18','2026-03-19','2026-03-20','2026-03-23','2026-03-24','2026-03-25','2026-03-26','2026-03-27','2026-03-30','2026-03-31','2026-04-01','2026-04-02','2026-04-03'];
+
+// Implied oil per sector (EV/EBITDA method, baseline Jan 2 = $57.33)
+const IMP_AIRLINES   = [58.1,57.3,55.4,54.0,54.9,55.2,54.0,56.1,57.7,59.6,56.9,56.5,56.5,59.1,56.9,57.3,59.1,60.5,63.3,64.1,62.6,64.8,61.2,60.6,58.6,61.0,54.9,55.8,56.7,60.3,63.5,62.0,62.0,58.7,57.7,62.6,61.3,65.7,64.3,64.2,61.6,67.0,69.0,70.3,70.3,75.4,78.2,77.4,78.2,78.0,82.1,79.6,77.4,75.1,76.3,76.4,74.7,71.8,71.7,70.1,70.3,73.4,75.8,59.1,53.8,54.0,54.0];
+const IMP_INDUSTRIAL = [60.1,57.3,56.3,54.3,57.7,55.8,54.5,53.3,52.9,53.4,51.7,49.3,49.3,50.9,49.5,50.4,51.8,52.4,51.1,51.4,50.5,50.4,48.4,47.6,47.2,49.9,45.9,45.6,46.7,45.6,49.4,50.0,50.0,49.4,48.4,47.8,47.5,50.6,48.8,49.7,49.6,50.3,47.3,49.7,48.7,50.7,51.9,52.1,52.2,51.1,53.4,53.6,53.7,54.0,53.8,55.0,54.0,52.1,50.2,50.8,52.0,53.3,57.8,54.3,51.1,51.6,51.6];
+const IMP_SOFTWARE   = [50.8,57.3,56.9,53.4,51.9,54.2,53.1,52.1,57.2,64.6,67.2,68.3,68.3,73.6,76.8,72.6,71.8,70.3,72.3,73.3,88.3,94.3,95.7,111.7,117.1,137.8,127.1,118.0,119.6,126.2,138.6,134.5,134.5,142.0,136.2,137.8,142.1,161.5,154.6,144.7,138.8,145.1,136.9,131.5,124.0,115.5,113.6,116.0,122.3,119.5,119.3,122.3,121.7,122.2,122.8,123.3,122.5,118.7,130.3,135.2,133.7,145.3,146.8,139.4,139.6,138.3,138.3];
+const IMP_DATACENTER = [55.5,57.3,56.3,54.5,54.1,52.7,51.7,52.4,53.8,57.6,57.6,56.1,56.3,59.2,59.7,56.2,54.4,53.2,50.6,50.3,52.5,54.4,53.8,57.6,60.4,68.4,72.4,70.2,73.7,76.6,81.7,84.6,85.0,85.8,83.3,83.8,79.8,86.0,84.5,81.0,83.1,84.9,83.6,83.2,80.1,79.2,81.7,80.8,79.9,78.6,80.5,83.6,82.0,81.3,83.3,85.1,85.8,85.1,89.5,90.1,96.0,102.6,103.7,94.9,91.0,91.8,91.9]; // 4-co avg: META+AMZN+MSFT+GOOGL
+// LTM (Last Twelve Months) implied oil arrays — actual reported EBITDA, no analyst forecast
+// Key finding: Airlines/Industrials identical to NTM (confirming 1:1 EPS/price pass-through)
+// Software: $103 LTM vs $138 NTM (NTM depressed by forward estimate cuts, not oil alone)
+// Data Centers: $78 LTM vs $92 NTM (same dynamic)
+const LTM_AIRLINES   = [58.2,57.3,55.4,55.0,55.4,55.2,54.4,54.9,56.3,57.7,55.4,54.9,54.9,56.4,55.1,55.1,56.4,57.0,58.6,58.2,56.1,57.2,54.2,53.4,52.0,53.7,49.0,49.3,50.1,52.7,55.3,50.4,50.4,47.9,47.0,50.5,49.5,52.8,51.8,51.4,49.8,53.6,55.1,56.0,55.9,59.5,61.9,61.2,61.5,61.7,64.5,65.2,57.7,56.1,56.8,56.9,57.3,55.4,54.9,54.0,54.1,56.8,59.5,56.8,54.2,54.4,54.4];
+const LTM_INDUSTRIAL = [59.8,57.3,56.5,54.6,57.6,55.7,54.6,53.5,53.4,53.9,52.4,50.1,50.1,51.0,50.0,50.6,52.0,52.4,51.4,51.6,50.9,50.7,48.8,48.1,47.6,50.2,46.8,46.5,47.8,46.7,50.1,52.6,52.6,51.9,50.9,50.3,49.8,52.5,50.9,51.5,51.6,52.4,49.5,51.5,50.4,52.0,53.0,53.1,53.0,52.0,53.5,53.7,54.2,54.6,54.1,55.1,53.6,51.8,50.0,50.6,51.2,52.3,56.3,53.7,51.1,51.6,51.6];
+const LTM_SOFTWARE   = [53.6,57.3,57.0,54.7,54.4,54.8,54.9,54.0,58.1,63.0,64.0,62.7,62.7,63.7,66.5,64.0,63.7,63.0,63.6,63.8,72.7,75.6,75.5,84.3,87.1,100.5,93.6,88.0,90.1,93.4,101.9,106.3,106.3,110.1,105.6,106.6,109.5,121.4,117.3,111.3,108.7,113.4,106.7,103.4,98.3,92.4,90.8,92.5,95.4,92.3,90.8,92.2,97.1,98.6,98.2,98.6,95.2,91.9,97.6,101.6,98.8,105.1,107.6,104.1,103.5,103.2,103.2];
+const LTM_DATACENTER = [56.2,57.3,56.5,55.1,54.9,53.4,52.8,52.8,53.8,56.6,56.3,54.7,54.7,56.4,56.8,54.2,53.0,52.1,50.0,49.7,50.4,51.3,50.3,53.0,55.0,59.9,62.4,60.7,63.6,65.4,69.6,71.9,71.9,72.4,70.2,70.5,67.5,71.8,70.7,68.3,70.0,71.4,69.8,75.9,73.3,72.3,74.0,73.2,72.2,70.8,71.8,73.8,72.8,72.4,73.3,74.5,74.1,73.7,76.5,77.2,80.9,85.5,86.6,80.5,77.3,78.1,78.0];
+
+// Active arrays — switched by NTM/LTM toggle
+let activeMultiple = 'ntm';
+let ACT_AIRLINES   = IMP_AIRLINES;
+let ACT_INDUSTRIAL = IMP_INDUSTRIAL;
+let ACT_SOFTWARE   = IMP_SOFTWARE;
+let ACT_DATACENTER = IMP_DATACENTER;
+
+// Gap values per multiple basis
+const GAPS_NTM = {airlines:58, industrial:60, software:-26, datacenter:20};
+const GAPS_LTM = {airlines:58, industrial:60, software:9,   datacenter:34};
+
+function setMultiple(m){
+  activeMultiple = m;
+  document.getElementById('ntm-btn').classList.toggle('active', m==='ntm');
+  document.getElementById('ltm-btn').classList.toggle('active', m==='ltm');
+  if(m==='ntm'){
+    ACT_AIRLINES=IMP_AIRLINES; ACT_INDUSTRIAL=IMP_INDUSTRIAL;
+    ACT_SOFTWARE=IMP_SOFTWARE; ACT_DATACENTER=IMP_DATACENTER;
+  } else {
+    ACT_AIRLINES=LTM_AIRLINES; ACT_INDUSTRIAL=LTM_INDUSTRIAL;
+    ACT_SOFTWARE=LTM_SOFTWARE; ACT_DATACENTER=LTM_DATACENTER;
+  }
+  // Update SECTORS gap values
+  const gaps = m==='ntm' ? GAPS_NTM : GAPS_LTM;
+  SECTORS.airlines.gap   = gaps.airlines;
+  SECTORS.industrial.gap = gaps.industrial;
+  SECTORS.software.gap   = gaps.software;
+  SECTORS.datacenter.gap = gaps.datacenter;
+  // Update sidebar gap cards
+  updateSidebarGaps();
+  updateGapExplain();
+  drawGap();
+}
+
+function updateSidebarGaps(){
+  const m = activeMultiple;
+  const gaps = m==='ntm' ? GAPS_NTM : GAPS_LTM;
+  const implied = m==='ntm'
+    ? {airlines:54, industrial:52, software:138, datacenter:92}
+    : {airlines:54, industrial:52, software:103, datacenter:78};
+  document.getElementById('sb-air-implied').textContent = '$'+implied.airlines;
+  document.getElementById('sb-ind-implied').textContent = '$'+implied.industrial;
+  document.getElementById('sb-sw-implied').textContent  = '$'+implied.software;
+  document.getElementById('sb-dc-implied').textContent  = '$'+implied.datacenter;
+  document.getElementById('sb-air-gap').innerHTML = 'Gap: <strong style="color:var(--c-air)">+$'+gaps.airlines+'/bbl</strong> unpriced';
+  document.getElementById('sb-ind-gap').innerHTML = 'Gap: <strong style="color:var(--c-ind)">+$'+gaps.industrial+'/bbl</strong> unpriced';
+  document.getElementById('sb-sw-gap').innerHTML  = gaps.software > 0
+    ? 'Gap: <strong style="color:var(--c-sw)">+$'+gaps.software+'/bbl</strong> unpriced'
+    : 'Gap: <strong style="color:var(--c-sw)">−$'+Math.abs(gaps.software)+'/bbl</strong> over-corrected';
+  document.getElementById('sb-dc-gap').innerHTML  = 'Gap: <strong style="color:var(--c-dc)">+$'+gaps.datacenter+'/bbl</strong> unpriced';
+  // Note on software LTM
+  document.getElementById('sb-sw-note').textContent = m==='ltm'
+    ? 'On trailing actuals, software shows a small positive gap ($9) — NTM looked over-corrected because forward estimates were cut beyond what oil alone explains.'
+    : 'IGV over-corrected — AI capex uncertainty and tariff fears drove additional multiple compression unrelated to energy fundamentals.';
+  document.getElementById('sb-dc-note').textContent = m==='ltm'
+    ? '4-company avg (MSFT/AMZN/META/GOOGL). LTM gap of $34 is wider than NTM ($20) — forward estimates have been partially revised upward, masking trailing multiple compression.'
+    : '4-company avg (MSFT/AMZN/META/GOOGL). GOOGL multiple compressed 2.4x turns, widening the unpriced gap vs. the prior 3-company estimate.';
+}
+
+
+// WTI daily actuals (CME CL00-USA, Jan 2 – Apr 2, 2026)
+const WTI_DATES  = ['2026-01-02','2026-01-05','2026-01-06','2026-01-07','2026-01-08','2026-01-09','2026-01-12','2026-01-13','2026-01-14','2026-01-15','2026-01-16','2026-01-20','2026-01-21','2026-01-22','2026-01-23','2026-01-26','2026-01-27','2026-01-28','2026-01-29','2026-01-30','2026-02-02','2026-02-03','2026-02-04','2026-02-05','2026-02-06','2026-02-09','2026-02-10','2026-02-11','2026-02-12','2026-02-13','2026-02-17','2026-02-18','2026-02-19','2026-02-20','2026-02-23','2026-02-24','2026-02-25','2026-02-26','2026-02-27','2026-03-02','2026-03-03','2026-03-04','2026-03-05','2026-03-06','2026-03-09','2026-03-10','2026-03-11','2026-03-12','2026-03-13','2026-03-16','2026-03-17','2026-03-18','2026-03-19','2026-03-20','2026-03-23','2026-03-24','2026-03-25','2026-03-26','2026-03-27','2026-03-30','2026-03-31','2026-04-01','2026-04-02'];
+const WTI_PRICES = [57.33,58.34,56.97,56.40,58.40,58.78,59.84,61.10,60.90,59.17,59.22,59.51,60.67,59.67,61.30,60.83,62.57,63.50,65.50,65.74,62.33,63.90,64.47,63.12,63.50,64.42,64.20,64.90,62.91,62.81,62.30,64.94,66.67,66.32,66.29,66.08,65.57,65.46,67.29,71.03,74.81,76.10,78.89,91.27,85.05,86.39,88.41,96.40,99.30,94.22,96.02,99.04,94.59,98.09,88.89,88.39,91.29,93.78,101.18,105.00,101.54,98.88,111.54];
+
+// Apr 3 add-on point ($112 — the current price)
+const TODAY_IDX = FS_DATES.indexOf('2026-04-03'); // 66
+
+// Forward monthly dates: May – Dec 2026 + Dec 31
+const FWD_LABELS = ['Apr-3','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FWD_DATES  = ['2026-04-03','2026-05-01','2026-06-01','2026-07-01','2026-08-01','2026-09-01','2026-10-01','2026-11-01','2026-12-31'];
+const N_FWD = FWD_DATES.length - 1; // 8 forward steps after Apr 3
+
+// Conflict escalation date
+const CONFLICT_IDX = FS_DATES.indexOf('2026-03-06'); // Mar 6 — big jump day
+
+// ══ SIMULATION ═════════════════════════════════════════════════════════════
+const N_PATHS = 2000;
+const REGIMES = {
+  1:{target:67,  kappa:0.40, volStart:0.50, volEnd:0.28},
+  2:{target:85,  kappa:0.30, volStart:0.50, volEnd:0.35},
+  3:{target:110, kappa:0.18, volStart:0.50, volEnd:0.40},
+};
+const SCENARIOS = {
+  bull:{w1:40,w2:45,w3:15,label:'Bull'},
+  base:{w1:15,w2:50,w3:35,label:'Base'},
+  bear:{w1:5, w2:20,w3:75,label:'Bear'},
+};
+const SECTORS = {
+  airlines:  {bps10:90, label:'Airlines',    gap:58, color:'#E74C3C'},
+  industrial:{bps10:42, label:'Industrials', gap:60, color:'#C9A84C'},
+  software:  {bps10:20, label:'Software',    gap:-26,color:'#4A90C4'},
+  datacenter:{bps10:40, label:'Data Centers',gap:20, color:'#8E6BBF'},
+};
+
+let activeScen = 'base';
+let simData    = null;
+
+function setScen(name) {
+  activeScen = name;
+  ['bull','base','bear'].forEach(n => document.getElementById('btn-'+n).classList.toggle('active', n===name));
+  const labels = {bull:'Bull scenario active',base:'Base scenario active',bear:'Bear scenario active'};
+  document.getElementById('active-lbl').textContent = labels[name];
+  updateGapExplain(); // update scenario name in gap text
+}
+
+function randn() {
+  let u=0,v=0;
+  while(!u)u=Math.random();while(!v)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+function getTrans(w1,w2,w3) {
+  const t=w1+w2+w3, n=[w1/t,w2/t,w3/t], s=0.80, l=0.20;
+  return {
+    1:{1:s+l*n[0],2:l*n[1],3:l*n[2]},
+    2:{1:l*n[0],2:s+l*n[1],3:l*n[2]},
+    3:{1:l*n[0],2:l*n[1],3:s+l*n[2]},
+  };
+}
+
+function simPath(trans, nw) {
+  const r0=Math.random();
+  let reg = r0<nw[0]?1:r0<nw[0]+nw[1]?2:3;
+  const px=[112]; const dt=1/12;
+  for(let m=1;m<=N_FWD;m++){
+    const row=trans[reg], tr=Math.random();
+    if(tr<row[1])reg=1;else if(tr<row[1]+row[2])reg=2;else reg=3;
+    const r=REGIMES[reg], prev=px[px.length-1];
+    const vol=r.volStart+(r.volEnd-r.volStart)*Math.min(m/N_FWD,1);
+    const lp=Math.log(prev), lt=Math.log(r.target), z=randn();
+    const nxt=Math.exp(lp+r.kappa*(lt-lp)*dt+vol*Math.sqrt(dt)*z);
+    px.push(Math.max(SIM_FLOOR, Math.min(SIM_CEIL, nxt)));
+  }
+  return px;
+}
+
+function pct(arr,p) {
+  const s=[...arr].sort((a,b)=>a-b);
+  return s[Math.floor(p/100*(s.length-1))];
+}
+
+function computeWACCDelta(price, secKey) {
+  return ((price - CURRENT_OIL) / 10) * SECTORS[secKey].bps10;
+}
+
+function runSim() {
+  const btn=document.getElementById('run-btn');
+  btn.textContent='◌ Running...'; btn.classList.add('running');
+  document.getElementById('load-gap').classList.add('on');
+
+  setTimeout(()=>{
+    const sc=SCENARIOS[activeScen];
+    const trans=getTrans(sc.w1,sc.w2,sc.w3);
+    const nw=[sc.w1/100,sc.w2/100,sc.w3/100];
+    const paths=[];
+    for(let i=0;i<N_PATHS;i++) paths.push(simPath(trans,nw));
+
+    const byMonth=Array.from({length:N_FWD+1},(_,m)=>paths.map(p=>p[m]));
+    const p = (arr,q)=>pct(arr,q);
+    simData={
+      scenario:activeScen,
+      p5: byMonth.map(a=>p(a,5)),
+      p25:byMonth.map(a=>p(a,25)),
+      p50:byMonth.map(a=>p(a,50)),
+      p75:byMonth.map(a=>p(a,75)),
+      p95:byMonth.map(a=>p(a,95)),
+    };
+
+    // WACC deltas per sector at M3, M6, M9 (months 3,6,8 of the 8-step sim)
+    const waccAt=(m,key)=>byMonth[m].map(px=>computeWACCDelta(px,key));
+    simData.wacc={};
+    const checkpoints=[3,6,N_FWD]; // M3=Jul, M6=Oct, M9=Dec31
+    Object.keys(SECTORS).forEach(key=>{
+      simData.wacc[key]={};
+      checkpoints.forEach(m=>{
+        const arr=waccAt(m,key);
+        simData.wacc[key][m]={p5:p(arr,5),p25:p(arr,25),p50:p(arr,50),p75:p(arr,75),p95:p(arr,95)};
+      });
+    });
+
+    btn.textContent='▶ Run Simulation'; btn.classList.remove('running');
+    document.getElementById('load-gap').classList.remove('on');
+    renderAll();
+    updateCards();
+    updateGapExplain();
+  },30);
+}
+
+// ══ TAB / UI STATE ═════════════════════════════════════════════════════════
+let activeTab='gap';
+let waccView='compare', waccSec='airlines';
+let eqView='compare',   eqSec='airlines';
+
+function setWaccView(v){
+  waccView=v;
+  document.getElementById('wv-compare').classList.toggle('active',v==='compare');
+  document.getElementById('wv-detail').classList.toggle('active',v==='detail');
+  document.getElementById('wacc-sec-btns').style.display=v==='detail'?'flex':'none';
+  document.getElementById('wacc-compare-view').style.display=v==='compare'?'flex':'none';
+  document.getElementById('wacc-detail-view').style.display=v==='detail'?'flex':'none';
+  if(simData) drawWACC();
+}
+function setWaccSec(s){
+  waccSec=s;
+  ['airlines','industrial','software','datacenter'].forEach(k=>{
+    document.getElementById('ws-'+k).classList.toggle('active',k===s);
+  });
+  if(simData) drawWACC();
+}
+function setEqView(v){
+  eqView=v;
+  document.getElementById('ev-compare').classList.toggle('active',v==='compare');
+  document.getElementById('ev-detail').classList.toggle('active',v==='detail');
+  document.getElementById('eq-sec-btns').style.display=v==='detail'?'flex':'none';
+  document.getElementById('eq-compare-view').style.display=v==='compare'?'flex':'none';
+  document.getElementById('eq-detail-view').style.display=v==='detail'?'flex':'none';
+  if(simData) drawEquity();
+}
+function setEqSec(s){
+  eqSec=s;
+  ['airlines','industrial','software','datacenter'].forEach(k=>{
+    document.getElementById('es-'+k).classList.toggle('active',k===s);
+  });
+  if(simData) drawEquity();
+}
+function showTab(t) {
+  activeTab=t;
+  ['gap','wacc','equity','meth'].forEach(id=>{
+    document.getElementById('panel-'+id).classList.toggle('hidden', id!==t);
+    document.querySelectorAll('.tab')[['gap','wacc','equity','meth'].indexOf(id)]
+      .classList.toggle('active', id===t);
+  });
+
+  if(t!=='meth'&&simData) renderAll();
+}
+
+function toggleHow(){
+  const p=document.getElementById('how-popup');
+  p.style.display=p.style.display==='none'||p.style.display===''?'block':'none';
+}
+
+function toggleMeth(id){
+  const b=document.getElementById(id), c=document.getElementById(id+'-chev');
+  const open=b.classList.toggle('open');
+  c.style.transform=open?'rotate(90deg)':'';
+}
+
+// ══ RENDERING ══════════════════════════════════════════════════════════════
+function renderAll(){
+  if(activeTab==='gap')         drawGap();
+  else if(activeTab==='wacc')   { drawWACC(); if(waccView==='detail') updateWACCProse(waccSec); }
+  else if(activeTab==='equity') { drawEquity(); if(eqView==='detail') updateEqProse(eqSec); }
+}
+
+function setupCanvas(id){
+  const cv=document.getElementById(id), wrap=cv.parentElement;
+  const dpr=window.devicePixelRatio||1;
+  const W=wrap.clientWidth, H=Math.max(wrap.clientHeight,320);
+  cv.width=W*dpr; cv.height=H*dpr;
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  return {ctx,W,H};
+}
+
+// ── GAP CHART ─────────────────────────────────────────────────────────────
+// X-axis: unified time with equal-width months
+// Historical: daily points within Jan–Apr (width = ~3.3 months)
+// Forward: monthly points May–Dec (width = ~8 months)
+// We allocate pixels proportionally by calendar time.
+function drawGap(){
+  const {ctx,W,H}=setupCanvas('cv-gap');
+  const pad={top:26,right:72,bottom:44,left:58};
+  const cw=W-pad.left-pad.right, ch=H-pad.top-pad.bottom;
+
+  // Build unified time axis by calendar date
+  // Historical: FS_DATES (Jan 1 = t0)
+  // Forward: FWD_DATES[1..] (May–Dec)
+  const t0=new Date('2026-01-01').getTime();
+  const t1=new Date('2026-12-31').getTime();
+  const tRange=t1-t0;
+
+  const tToX=t=>pad.left+(t-t0)/tRange*cw;
+  const fsT=FS_DATES.map(d=>new Date(d).getTime());
+  const fwdT=FWD_DATES.map(d=>new Date(d).getTime());
+
+  // Price range
+  let minP=45, maxP=130;
+  if(simData){ maxP=Math.max(maxP,...simData.p95)*1.02; }
+  minP=Math.floor(minP/10)*10; maxP=Math.ceil(maxP/10)*10;
+  const yS=p=>pad.top+ch-((Math.max(minP,Math.min(maxP,p))-minP)/(maxP-minP))*ch;
+
+  ctx.clearRect(0,0,W,H);
+
+  // Grid
+  for(let p=minP;p<=maxP;p+=10){
+    const y=yS(p);
+    ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cw,y); ctx.stroke();
+    ctx.fillStyle='rgba(127,140,141,0.7)'; ctx.font='9px JetBrains Mono, monospace';
+    ctx.textAlign='right'; ctx.fillText('$'+p,pad.left-5,y+3);
+  }
+
+  // Month labels
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  for(let m=0;m<12;m++){
+    const t=new Date(2026,m,1).getTime();
+    const x=tToX(t);
+    ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(x,pad.top); ctx.lineTo(x,pad.top+ch); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(127,140,141,0.65)'; ctx.font='9px JetBrains Mono, monospace';
+    ctx.textAlign='center'; ctx.fillText(months[m],x,pad.top+ch+16);
+  }
+  // Dec 31
+  ctx.fillStyle='rgba(127,140,141,0.65)'; ctx.font='9px JetBrains Mono, monospace';
+  ctx.textAlign='right'; ctx.fillText('Dec 31',pad.left+cw,pad.top+ch+16);
+
+  // Conflict escalation shading
+  const conflictX=tToX(fsT[CONFLICT_IDX]);
+  const todayX=tToX(fsT[TODAY_IDX]);
+  ctx.fillStyle='rgba(231,76,60,0.05)';
+  ctx.fillRect(conflictX,pad.top,todayX-conflictX,ch);
+  // Wrap Hormuz label across two lines inside the shaded zone
+  const midConflict = conflictX + (todayX - conflictX) / 2;
+  ctx.fillStyle='rgba(231,76,60,0.55)'; ctx.font='italic 8px JetBrains Mono, monospace';
+  ctx.textAlign='center';
+  // Only show text if zone is wide enough
+  const zoneW = todayX - conflictX;
+  if(zoneW > 60){
+    ctx.fillText('Hormuz',  midConflict, pad.top + 11);
+    ctx.fillText('escalation', midConflict, pad.top + 21);
+  } else {
+    ctx.fillText('↑', midConflict, pad.top + 11);
+  }
+
+  // Forward simulation bands
+  if(simData){
+    const drawBand=(u,l,col,alpha)=>{
+      ctx.beginPath(); ctx.fillStyle=`rgba(${col},${alpha})`;
+      u.forEach((v,i)=>{const x=tToX(fwdT[i]),y=yS(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+      for(let i=l.length-1;i>=0;i--) ctx.lineTo(tToX(fwdT[i]),yS(l[i]));
+      ctx.closePath(); ctx.fill();
+    };
+    drawBand(simData.p95,simData.p75,'240,192,64',0.07);
+    drawBand(simData.p75,simData.p25,'240,192,64',0.12);
+    drawBand(simData.p25,simData.p5,'240,192,64',0.07);
+
+    // Sim lines
+    const drawSL=(data,color,w,dash=[])=>{
+      ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=w;ctx.setLineDash(dash);
+      data.forEach((v,i)=>{const x=tToX(fwdT[i]),y=yS(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+      ctx.stroke();ctx.setLineDash([]);
+    };
+    drawSL(simData.p95,'rgba(231,76,60,0.5)',1,[3,4]);
+    drawSL(simData.p5,'rgba(74,144,196,0.5)',1,[3,4]);
+    drawSL(simData.p50,'#C9A84C',2.5);
+
+    // Year-end labels
+    const lx=tToX(fwdT[N_FWD])+4;
+    ctx.font='bold 9px JetBrains Mono, monospace'; ctx.textAlign='left';
+    ctx.fillStyle='rgba(231,76,60,0.8)'; ctx.fillText('$'+simData.p95[N_FWD].toFixed(0),lx,yS(simData.p95[N_FWD])+3);
+    ctx.fillStyle='#C9A84C';              ctx.fillText('$'+simData.p50[N_FWD].toFixed(0),lx,yS(simData.p50[N_FWD])+3);
+    ctx.fillStyle='rgba(74,144,196,0.8)'; ctx.fillText('$'+simData.p5[N_FWD].toFixed(0),lx,yS(simData.p5[N_FWD])+3);
+
+    // Scenario label
+    ctx.fillStyle='rgba(201,168,76,0.55)'; ctx.font='italic 8.5px JetBrains Mono, monospace';
+    ctx.textAlign='center';
+    ctx.fillText(SCENARIOS[simData.scenario].label+' scenario — forward distribution',tToX((fwdT[0]+fwdT[N_FWD])/2),pad.top+8);
+  }
+
+  // TODAY line
+  ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(todayX,pad.top); ctx.lineTo(todayX,pad.top+ch); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.75)'; ctx.font='bold 8.5px JetBrains Mono, monospace';
+  ctx.textAlign='center'; ctx.fillText('Today · $112',todayX,pad.top-6);
+
+  // Gap shading (airlines and industrials vs WTI — the primary repricing story)
+  const buildWTIY=()=>{
+    // Interpolate WTI at every FS date
+    return FS_DATES.map(d=>{
+      const t=new Date(d).getTime();
+      let lo=0;
+      for(let j=0;j<WTI_DATES.length;j++){if(new Date(WTI_DATES[j]).getTime()<=t)lo=j;}
+      const hi=Math.min(lo+1,WTI_DATES.length-1);
+      if(lo===hi)return WTI_PRICES[lo];
+      const t0w=new Date(WTI_DATES[lo]).getTime(),t1w=new Date(WTI_DATES[hi]).getTime();
+      const f=(t-t0w)/(t1w-t0w||1);
+      return WTI_PRICES[lo]+f*(WTI_PRICES[hi]-WTI_PRICES[lo]);
+    });
+  };
+  const wtiY=buildWTIY();
+
+  // Shade: WTI above airlines/industrials
+  [[ACT_AIRLINES,'rgba(231,76,60,0.07)'],[ACT_INDUSTRIAL,'rgba(201,168,76,0.05)']].forEach(([imp,col])=>{
+    ctx.beginPath(); ctx.fillStyle=col;
+    FS_DATES.forEach((d,i)=>{const x=tToX(fsT[i]),y=yS(wtiY[i]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    for(let i=FS_DATES.length-1;i>=0;i--) ctx.lineTo(tToX(fsT[i]),yS(imp[i]));
+    ctx.closePath(); ctx.fill();
+  });
+
+  // Implied oil lines (dashed, sector-colored)
+  const impLines=[
+    {data:ACT_AIRLINES,   color:'#E74C3C'},
+    {data:ACT_INDUSTRIAL, color:'#C9A84C'},
+    {data:ACT_DATACENTER, color:'#8E6BBF'},
+    {data:ACT_SOFTWARE,   color:'#4A90C4'},
+  ];
+  impLines.forEach(({data,color})=>{
+    ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    data.forEach((v,i)=>{const x=tToX(fsT[i]),y=yS(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.stroke(); ctx.setLineDash([]);
+  });
+
+  // WTI actual line (solid gold, daily)
+  ctx.beginPath(); ctx.strokeStyle='#F0C040'; ctx.lineWidth=2.8;
+  WTI_DATES.forEach((d,j)=>{
+    const x=tToX(new Date(d).getTime()), y=yS(WTI_PRICES[j]);
+    j===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  // Add Apr 3 point at $112
+  ctx.lineTo(tToX(new Date('2026-04-03').getTime()), yS(112));
+  ctx.stroke();
+
+  // Start dot + label
+  const sx=tToX(new Date('2026-01-02').getTime());
+  ctx.beginPath(); ctx.arc(sx,yS(57.33),4.5,0,Math.PI*2);
+  ctx.fillStyle='#F0C040'; ctx.fill();
+  ctx.fillStyle='rgba(240,192,64,0.8)'; ctx.font='8.5px JetBrains Mono, monospace';
+  ctx.textAlign='left'; ctx.fillText('$57 Jan 2',sx+7,yS(57.33)-4);
+
+  // Axes
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad.left,pad.top); ctx.lineTo(pad.left,pad.top+ch);
+  ctx.lineTo(pad.left+cw,pad.top+ch); ctx.stroke();
+  ctx.save(); ctx.translate(13,pad.top+ch/2); ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='rgba(127,140,141,0.65)'; ctx.font='9px JetBrains Mono, monospace';
+  ctx.textAlign='center'; ctx.fillText('WTI ($/barrel)',0,0); ctx.restore();
+
+  // Store for tooltip
+  window._gapState={tToX,yS,fsT,fwdT,wtiY,pad,cw,ch,W,H};
+}
+
+// ── WACC CHART ────────────────────────────────────────────────────────────
+function drawWACC(){
+  if(!simData) return;
+  if(waccView==='compare'){
+    ['airlines','industrial','software','datacenter'].forEach((key,i)=>{
+      const cvIds=['cv-wacc-air','cv-wacc-ind','cv-wacc-sw','cv-wacc-dc'];
+      drawWACCPanel(cvIds[i], key);
+    });
+  } else {
+    drawWACCPanel('cv-wacc-detail', waccSec);
+    updateWACCProse(waccSec);
+  }
+}
+
+function setupCellCanvas(id){
+  const cv=document.getElementById(id);
+  if(!cv) return null;
+  const wrap=cv.parentElement;
+  const dpr=window.devicePixelRatio||1;
+  // For compare cells use the cell's own dimensions
+  const W=Math.max(wrap.clientWidth||wrap.offsetWidth, 200);
+  const H=Math.max(wrap.clientHeight||wrap.offsetHeight, 200);
+  cv.width=W*dpr; cv.height=H*dpr;
+  cv.style.width='100%'; cv.style.height='100%';
+  // Position canvas absolutely to fill cell
+  cv.style.position='absolute'; cv.style.top='0'; cv.style.left='0';
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  return {ctx,W,H};
+}
+
+function drawWACCPanel(canvasId, key){
+  const r=setupCellCanvas(canvasId); if(!r) return;
+  const {ctx,W,H}=r;
+  const sec=SECTORS[key];
+  const alr=ALREADY_TRIGGERED[key];
+  const checkpoints=[3,6,N_FWD];
+  const cpLabels=[['M3','Jul'],['M6','Oct'],['M9','Dec']];
+  const isDetail=(waccView==='detail');
+
+  const pad={top:22,right:isDetail?52:40,bottom:isDetail?52:44,left:isDetail?64:52};
+  const cw=W-pad.left-pad.right, ch=H-pad.top-pad.bottom;
+  const nCp=3;
+  const barW=Math.min(cw/(nCp*3.5), isDetail?32:22);
+  const gap=barW*0.45;
+  const totalBarsW=nCp*barW+(nCp-1)*gap;
+  const startX=(cw-totalBarsW)/2+pad.left;
+
+  // Scale for this sector only
+  let minB=0, maxB=0;
+  checkpoints.forEach(m=>{
+    const d=simData.wacc[key][m];
+    minB=Math.min(minB,alr+d.p5); maxB=Math.max(maxB,alr+d.p95);
+  });
+  const step=maxB<300?50:maxB<700?100:200;
+  minB=Math.floor(minB/step)*step-step; maxB=Math.ceil(maxB/step)*step+step;
+  const range=maxB-minB;
+  const yS=bps=>pad.top+ch-((bps-minB)/range)*ch;
+  const yZ=yS(0);
+
+  ctx.clearRect(0,0,W,H);
+
+  // Grid
+  for(let b=minB;b<=maxB;b+=step){
+    const y=yS(b);
+    ctx.strokeStyle=b===0?'rgba(255,255,255,0.25)':'rgba(255,255,255,0.05)';
+    ctx.lineWidth=b===0?1.5:1;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cw,y); ctx.stroke();
+    ctx.fillStyle=b===0?'rgba(255,255,255,0.5)':'rgba(127,140,141,0.6)';
+    ctx.font='8px JetBrains Mono, monospace'; ctx.textAlign='right';
+    ctx.fillText((b>=0?'+':'')+b,pad.left-4,y+3);
+  }
+
+  // Zero label
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='italic 7.5px JetBrains Mono, monospace';
+  ctx.textAlign='right'; ctx.fillText('Jan 2',pad.left+cw,yZ-3);
+
+  window._waccBoxes=window._waccBoxes||[];
+  window._waccBoxes=window._waccBoxes.filter(b=>b.key!==key||(waccView==='compare'));
+
+  checkpoints.forEach((m,ci)=>{
+    const d=simData.wacc[key][m];
+    const bx=startX+ci*(barW+gap)+barW/2;
+    const isM9=ci===2;
+    const t95=alr+d.p95,t75=alr+d.p75,t50=alr+d.p50,t25=alr+d.p25,t5=alr+d.p5;
+    const y95=yS(t95),y75=yS(t75),y50=yS(t50),y25=yS(t25),y5=yS(t5);
+    const c95=t95>0?'#E74C3C':'#27AE60';
+    const c5 =t5 >0?'#E74C3C':'#27AE60';
+    const cM =t50>0?'#E74C3C':'#27AE60';
+
+    // Whiskers
+    ctx.strokeStyle=c95+'88'; ctx.lineWidth=1; ctx.setLineDash([2,3]);
+    ctx.beginPath(); ctx.moveTo(bx,y95); ctx.lineTo(bx,y75); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(bx-barW/3,y95); ctx.lineTo(bx+barW/3,y95); ctx.stroke();
+    ctx.strokeStyle=c5+'88'; ctx.setLineDash([2,3]);
+    ctx.beginPath(); ctx.moveTo(bx,y25); ctx.lineTo(bx,y5); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(bx-barW/3,y5); ctx.lineTo(bx+barW/3,y5); ctx.stroke();
+
+    // IQR box
+    const bT=Math.min(y75,y25), bHt=Math.abs(y25-y75);
+    ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.strokeStyle=sec.color+'55'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.rect(bx-barW/2,bT,barW,bHt); ctx.fill(); ctx.stroke();
+
+    // Median tick
+    ctx.strokeStyle=cM; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(bx-barW/2,y50); ctx.lineTo(bx+barW/2,y50); ctx.stroke();
+
+    // Labels
+    if(isM9){
+      const lx=bx+barW/2+3;
+      ctx.font='7px JetBrains Mono, monospace'; ctx.textAlign='left';
+      ctx.fillStyle=c95; ctx.fillText((t95>=0?'+':'')+Math.round(t95),lx,y95+3);
+      ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.fillText((t75>=0?'+':'')+Math.round(t75),lx,y75+3);
+      ctx.fillStyle=cM; ctx.font='bold 7px JetBrains Mono, monospace';
+      ctx.fillText((t50>=0?'+':'')+Math.round(t50),lx,y50+3);
+      ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='7px JetBrains Mono, monospace';
+      ctx.fillText((t25>=0?'+':'')+Math.round(t25),lx,y25+3);
+      ctx.fillStyle=c5; ctx.fillText((t5>=0?'+':'')+Math.round(t5),lx,y5+3);
+    } else {
+      ctx.fillStyle=cM; ctx.font='bold 7.5px JetBrains Mono, monospace'; ctx.textAlign='center';
+      ctx.fillText((t50>=0?'+':'')+Math.round(t50),bx,Math.min(y95,y75)-4);
+    }
+
+    // Period labels
+    ctx.fillStyle='rgba(127,140,141,0.65)'; ctx.font='7.5px JetBrains Mono, monospace';
+    ctx.textAlign='center'; ctx.fillText(cpLabels[ci][0],bx,pad.top+ch+14);
+    ctx.fillStyle='rgba(127,140,141,0.4)'; ctx.font='7px JetBrains Mono, monospace';
+    ctx.fillText(cpLabels[ci][1],bx,pad.top+ch+24);
+
+    window._waccBoxes.push({
+      x:bx-barW/2-4,y:pad.top,w:barW+8,h:ch,key,m,data:d,chartType:'wacc',alr,
+      totals:{p5:t5,p25:t25,p50:t50,p75:t75,p95:t95},
+    });
+  });
+
+  // Axes
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad.left,pad.top); ctx.lineTo(pad.left,pad.top+ch);
+  ctx.lineTo(pad.left+cw,pad.top+ch); ctx.stroke();
+
+  if(isDetail){
+    ctx.save(); ctx.translate(12,pad.top+ch/2); ctx.rotate(-Math.PI/2);
+    ctx.fillStyle='rgba(127,140,141,0.6)'; ctx.font='8.5px JetBrains Mono, monospace';
+    ctx.textAlign='center'; ctx.fillText('Total WACC expansion from Jan 2 (bps)',0,0); ctx.restore();
+    ctx.fillStyle='rgba(127,140,141,0.35)'; ctx.font='italic 7.5px JetBrains Mono, monospace';
+    ctx.textAlign='left';
+    ctx.fillText('Box=IQR · Tick=Median · Whiskers=P5/P95 · Labels=bps from Jan 2 · Hover for detail',
+      pad.left,pad.top+ch+40);
+  }
+}
+
+// ── EQUITY CHART ──────────────────────────────────────────────────────────
+function drawEquity(){
+  if(!simData) return;
+  if(eqView==='compare'){
+    ['airlines','industrial','software','datacenter'].forEach((key,i)=>{
+      const cvIds=['cv-eq-air','cv-eq-ind','cv-eq-sw','cv-eq-dc'];
+      drawEquityPanel(cvIds[i], key);
+    });
+  } else {
+    drawEquityPanel('cv-eq-detail', eqSec);
+    updateEqProse(eqSec);
+  }
+}
+
+function drawEquityPanel(canvasId, key){
+  const r=setupCellCanvas(canvasId); if(!r) return;
+  const {ctx,W,H}=r;
+  const sec=SECTORS[key];
+  const alr=ALREADY_TRIGGERED[key];
+  const checkpoints=[3,6,N_FWD];
+  const cpLabels=[['M3','Jul'],['M6','Oct'],['M9','Dec']];
+  const isDetail=(eqView==='detail');
+  const bpsToEq=bps=>Math.min(100,Math.max(-100,-(bps)*BPS_TO_EQ*100));
+
+  const pad={top:22,right:isDetail?44:36,bottom:isDetail?52:44,left:isDetail?56:48};
+  const cw=W-pad.left-pad.right, ch=H-pad.top-pad.bottom;
+  const nCp=3;
+  const barW=Math.min(cw/(nCp*3.5), isDetail?32:22);
+  const gap=barW*0.45;
+  const totalBarsW=nCp*barW+(nCp-1)*gap;
+  const startX=(cw-totalBarsW)/2+pad.left;
+
+  // Scale
+  let minE=-100,maxE=20;
+  checkpoints.forEach(m=>{
+    const d=simData.wacc[key][m];
+    maxE=Math.max(maxE,bpsToEq(alr+d.p5)+5);
+    minE=Math.min(minE,bpsToEq(alr+d.p95)-5);
+  });
+  minE=Math.max(-100,Math.floor(minE/20)*20);
+  maxE=Math.min(100,Math.ceil(maxE/20)*20);
+  const eRange=maxE-minE, eStep=20;
+  const yS=p=>pad.top+ch-((Math.max(minE,Math.min(maxE,p))-minE)/eRange)*ch;
+  const yZ=yS(0);
+
+  ctx.clearRect(0,0,W,H);
+
+  // Grid
+  for(let e=minE;e<=maxE;e+=eStep){
+    const y=yS(e);
+    ctx.strokeStyle=e===0?'rgba(255,255,255,0.25)':'rgba(255,255,255,0.05)';
+    ctx.lineWidth=e===0?1.5:1;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cw,y); ctx.stroke();
+    ctx.fillStyle=e===0?'rgba(255,255,255,0.5)':'rgba(127,140,141,0.6)';
+    ctx.font='8px JetBrains Mono, monospace'; ctx.textAlign='right';
+    ctx.fillText((e>=0?'+':'')+e+'%',pad.left-4,y+3);
+  }
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='italic 7.5px JetBrains Mono, monospace';
+  ctx.textAlign='right'; ctx.fillText('Jan 2',pad.left+cw,yZ-3);
+
+  window._eqBoxes=window._eqBoxes||[];
+  window._eqBoxes=window._eqBoxes.filter(b=>b.key!==key||(eqView==='compare'));
+
+  checkpoints.forEach((m,ci)=>{
+    const d=simData.wacc[key][m];
+    const bx=startX+ci*(barW+gap)+barW/2;
+    const isM9=ci===2;
+
+    const eqMed  =bpsToEq(alr+d.p50);
+    const eqWorst=bpsToEq(alr+d.p95);
+    const eqBest =bpsToEq(alr+d.p5);
+    const eqP75  =bpsToEq(alr+d.p75);
+    const eqP25  =bpsToEq(alr+d.p25);
+
+    const yMed=yS(eqMed),yBase=yZ,yWorst=yS(eqWorst),yBest=yS(eqBest);
+    const y75=yS(eqP75),y25=yS(eqP25);
+
+    // IQR box (no bars — box plot matching WACC style)
+    const bT=Math.min(y75,y25), bHt=Math.abs(y25-y75);
+    ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.strokeStyle=sec.color+'55'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.rect(bx-barW/2,bT,barW,bHt); ctx.fill(); ctx.stroke();
+
+    // Worst-case whisker (red, extends toward more negative)
+    ctx.strokeStyle='rgba(231,76,60,0.7)'; ctx.lineWidth=1.5; ctx.setLineDash([2,3]);
+    ctx.beginPath(); ctx.moveTo(bx,Math.min(y75,y25)); ctx.lineTo(bx,yWorst); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(bx-barW/3,yWorst); ctx.lineTo(bx+barW/3,yWorst); ctx.stroke();
+
+    // Best-case whisker (green, extends toward more positive)
+    ctx.strokeStyle='rgba(39,174,96,0.7)'; ctx.setLineDash([2,3]);
+    ctx.beginPath(); ctx.moveTo(bx,Math.max(y75,y25)); ctx.lineTo(bx,yBest); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(bx-barW/3,yBest); ctx.lineTo(bx+barW/3,yBest); ctx.stroke();
+
+    // Median tick (colored by sign)
+    const cM=eqMed>=0?'#27AE60':'#E74C3C';
+    ctx.strokeStyle=cM; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(bx-barW/2,yMed); ctx.lineTo(bx+barW/2,yMed); ctx.stroke();
+
+    // Median label
+    ctx.fillStyle=cM; ctx.font='bold 7.5px JetBrains Mono, monospace'; ctx.textAlign='center';
+    ctx.fillText((eqMed>=0?'+':'')+eqMed.toFixed(1)+'%',bx,yMed+(eqMed<0?-5:10));
+
+    // M9: endpoint labels
+    if(isM9){
+      if(Math.abs(eqWorst-eqMed)>2){
+        ctx.fillStyle='rgba(231,76,60,0.8)'; ctx.font='7px JetBrains Mono, monospace';
+        ctx.fillText((eqWorst>=0?'+':'')+eqWorst.toFixed(1)+'%',bx,yWorst+(eqWorst<eqMed?10:-4));
+      }
+      if(Math.abs(eqBest-eqMed)>2){
+        ctx.fillStyle='rgba(39,174,96,0.8)'; ctx.font='7px JetBrains Mono, monospace';
+        ctx.fillText((eqBest>=0?'+':'')+eqBest.toFixed(1)+'%',bx,yBest-(eqBest>eqMed?10:-4));
+      }
+    } else {
+      // M3/M6: just median above box
+    }
+
+    ctx.fillStyle='rgba(127,140,141,0.65)'; ctx.font='7.5px JetBrains Mono, monospace';
+    ctx.textAlign='center'; ctx.fillText(cpLabels[ci][0],bx,pad.top+ch+14);
+    ctx.fillStyle='rgba(127,140,141,0.4)'; ctx.font='7px JetBrains Mono, monospace';
+    ctx.fillText(cpLabels[ci][1],bx,pad.top+ch+24);
+
+    window._eqBoxes.push({x:bx-barW/2-4,y:pad.top,w:barW+8,h:ch,key,m,data:d,chartType:'equity',alr});
+  });
+
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad.left,pad.top); ctx.lineTo(pad.left,pad.top+ch);
+  ctx.lineTo(pad.left+cw,pad.top+ch); ctx.stroke();
+
+  if(isDetail){
+    ctx.save(); ctx.translate(12,pad.top+ch/2); ctx.rotate(-Math.PI/2);
+    ctx.fillStyle='rgba(127,140,141,0.6)'; ctx.font='8.5px JetBrains Mono, monospace';
+    ctx.textAlign='center'; ctx.fillText('Equity value impact from Jan 2 (%)',0,0); ctx.restore();
+    ctx.fillStyle='rgba(127,140,141,0.35)'; ctx.font='italic 7.5px JetBrains Mono, monospace';
+    ctx.textAlign='left';
+    ctx.fillText('Box=IQR · Tick=Median · Red whisker=worst · Green=best · Hover for detail',
+      pad.left,pad.top+ch+40);
+  }
+}
+
+// ══ CARDS & PROSE ═════════════════════════════════════════════════════════
+const SECTOR_CONTEXT = {
+  airlines:  'Jet fuel = 26% of airline operating costs (IATA 2025). With D/(D+E) of 47.7%, airlines are doubly exposed — margins compress directly and debt refinancing costs rise simultaneously.',
+  industrial:'BLS data shows durable manufacturing energy intensity worsening (−6.1pp in 2024), making industrials increasingly sensitive to energy price moves through both the operating cost and rate channels.',
+  software:  'Software has negligible direct oil exposure — the entire effect runs through the rate channel. Oil reprices inflation expectations, which reprices the discount rate applied to long-duration growth assets. IGV has already over-corrected beyond this: AI capex uncertainty and tariff fears contributed additional multiple compression not explained by oil.',
+  datacenter:'Data centers face both the rate channel (capital-intensive buildout with significant debt) and a power cost channel as electricity prices track natural gas and crude. The 4-company average now includes Google (GOOGL), whose 2.4x EV/EBITDA compression since January widened the implied gap from ~$13 to ~$20/bbl. The hyperscaler cohort has partially absorbed the shock but remains meaningfully behind actual WTI.',
+};
+
+function updateWACCProse(key){
+  if(!simData) return;
+  const sec=SECTORS[key];
+  const alr=ALREADY_TRIGGERED[key];
+  const d=simData.wacc[key][N_FWD];
+  const totMed=alr+d.p50, totP95=alr+d.p95, totP5=alr+d.p5;
+  const RED='#E74C3C', GREEN='#27AE60';
+  const wC=totMed>0?RED:GREEN;
+  const bpsToEq=bps=>Math.min(100,Math.max(-100,-(bps)*BPS_TO_EQ*100));
+  const eqMed=bpsToEq(totMed), eqWorst=bpsToEq(totP95);
+  const scName=SCENARIOS[activeScen].label;
+  const gap=sec.gap;
+
+  document.getElementById('wacc-prose-sector').textContent=sec.label+' · '+(
+    key==='airlines'?'JETS':key==='industrial'?'XLI':key==='software'?'IGV':'avg');
+  document.getElementById('wacc-prose-sector').style.color=sec.color;
+
+  document.getElementById('wacc-prose-big').innerHTML=
+    `<span style="color:${wC}">${totMed>0?'+':''}${totMed.toFixed(0)}</span>`;
+  document.getElementById('wacc-prose-sub').textContent='bps total WACC · year-end '+scName;
+
+  const p5C=totP5>0?RED:GREEN, p95C=totP95>0?RED:GREEN;
+  document.getElementById('wacc-prose-range').innerHTML=
+    `<span style="color:${p5C}">${totP5>0?'+':''}${totP5.toFixed(0)}</span>`+
+    `<span style="color:var(--grey)"> P5 — </span>`+
+    `<span style="color:${p95C}">${totP95>0?'+':''}${totP95.toFixed(0)}</span>`+
+    `<span style="color:var(--grey)"> P95 · from Jan 2</span>`;
+
+  const eC=eqMed>=0?GREEN:RED;
+  document.getElementById('wacc-prose-eq').innerHTML=
+    `<span style="font-size:9px;color:var(--grey)">Implied equity: </span>`+
+    `<span style="color:${eC}">${eqMed>=0?'+':''}${eqMed.toFixed(1)}%</span>`+
+    `<span style="font-size:9px;color:var(--grey)"> median  worst: </span>`+
+    `<span style="color:${RED}">${eqWorst>=0?'+':''}${eqWorst.toFixed(1)}%</span>`;
+
+  let prose='';
+  if(gap>0){
+    prose=`<p>Current ${sec.label} multiples imply oil near pre-conflict levels — `+
+      `a <strong style="color:${RED}">$${gap}/bbl gap</strong> representing roughly `+
+      `<strong style="color:${RED}">${Math.abs(bpsToEq(alr)).toFixed(0)}%</strong> of equity value `+
+      `not yet absorbed. The $57→$112 shock has already triggered `+
+      `<strong style="color:${RED}">+${alr}bps</strong> of WACC expansion that multiples haven't reflected.</p>`+
+      `<p>In the <strong>${scName}</strong> scenario, the forward oil distribution `+
+      (d.p50>0?`adds <strong style="color:${RED}">+${d.p50.toFixed(0)}bps</strong> on top, `:
+               `relieves <strong style="color:${GREEN}">${Math.abs(d.p50).toFixed(0)}bps</strong> back, `)+
+      `for a year-end total of <strong style="color:${wC}">${totMed>0?'+':''}${totMed.toFixed(0)}bps</strong> — `+
+      `implying <strong style="color:${RED}">${Math.abs(eqMed).toFixed(1)}%</strong> equity erosion from January. `+
+      `The P95 tail reaches <strong style="color:${RED}">+${totP95.toFixed(0)}bps</strong>.</p>`+
+      `<p>${SECTOR_CONTEXT[key]}</p>`;
+  } else {
+    prose=`<p>${sec.label} multiples have <strong style="color:${GREEN}">over-corrected</strong> — `+
+      `equities imply oil above actual WTI by $${Math.abs(gap)}/bbl. `+
+      `The sector has priced in more disruption than oil fundamentals alone explain.</p>`+
+      `<p>Total WACC expansion from January is `+
+      `<strong style="color:${wC}">${totMed>0?'+':''}${totMed.toFixed(0)}bps</strong> in the ${scName} scenario. `+
+      `Even here the already-triggered component (+${alr}bps) dominates.</p>`+
+      `<p>${SECTOR_CONTEXT[key]}</p>`;
+  }
+  document.getElementById('wacc-prose-text').innerHTML=prose;
+}
+
+function updateEqProse(key){
+  if(!simData) return;
+  const sec=SECTORS[key];
+  const alr=ALREADY_TRIGGERED[key];
+  const d=simData.wacc[key][N_FWD];
+  const bpsToEq=bps=>Math.min(100,Math.max(-100,-(bps)*BPS_TO_EQ*100));
+  const RED='#E74C3C', GREEN='#27AE60';
+  const eqMed=bpsToEq(alr+d.p50), eqWorst=bpsToEq(alr+d.p95), eqBest=bpsToEq(alr+d.p5);
+  const scName=SCENARIOS[activeScen].label;
+  const gap=sec.gap;
+
+  document.getElementById('eq-prose-sector').textContent=sec.label+' · '+(
+    key==='airlines'?'JETS':key==='industrial'?'XLI':key==='software'?'IGV':'avg');
+  document.getElementById('eq-prose-sector').style.color=sec.color;
+
+  const eC=eqMed>=0?GREEN:RED;
+  document.getElementById('eq-prose-big').innerHTML=
+    `<span style="color:${eC}">${eqMed>=0?'+':''}${eqMed.toFixed(1)}%</span>`;
+  document.getElementById('eq-prose-sub').textContent='implied equity impact · year-end '+scName;
+
+  const bC=eqBest>=0?GREEN:RED, wC=eqWorst>=0?GREEN:RED;
+  document.getElementById('eq-prose-range').innerHTML=
+    `<span style="color:${bC}">${eqBest>=0?'+':''}${eqBest.toFixed(1)}%</span>`+
+    `<span style="color:var(--grey)"> best — </span>`+
+    `<span style="color:${wC}">${eqWorst>=0?'+':''}${eqWorst.toFixed(1)}%</span>`+
+    `<span style="color:var(--grey)"> worst</span>`;
+
+  const alrEq=Math.abs(bpsToEq(alr)).toFixed(1);
+  const prose=`<p>This chart translates WACC changes into equity value impact using a standardized DCF sensitivity (100bps WACC expansion ≈ 17% equity value reduction, g=8%, terminal 25×). All values are measured from the January 2 pre-conflict baseline.</p>`+
+    `<p>The $57→$112 oil shock has already triggered `+
+    `<strong style="color:${RED}">${alrEq}%</strong> of implied equity erosion from pre-conflict levels `+
+    `that ${gap>0?'has not yet been absorbed into multiples':'multiples have largely reflected'}. `+
+    `In the <strong>${scName}</strong> scenario, the year-end total is `+
+    `<strong style="color:${eC}">${eqMed>=0?'+':''}${eqMed.toFixed(1)}%</strong>. `+
+    `Even the best-case path (P5) lands at `+
+    `<strong style="color:${bC}">${eqBest>=0?'+':''}${eqBest.toFixed(1)}%</strong> — `+
+    `recovering to January levels requires oil to fall below $57, which this simulation treats as a tail scenario.</p>`+
+    `<p>${SECTOR_CONTEXT[key]}</p>`+
+    `<p style="font-size:10px;color:rgba(127,140,141,0.6);font-style:italic">Interpretive layer — not a forecast. Does not capture earnings estimate revisions from higher fuel costs, which would amplify the equity impact for airlines and industrials beyond what WACC alone implies.</p>`;
+  document.getElementById('eq-prose-text').innerHTML=prose;
+}
+
+function updateGapExplain(){
+  const e=id=>document.getElementById(id);
+  // Static values — always available, set immediately
+  if(e('gap-air-val')) e('gap-air-val').textContent=SECTORS.airlines.gap;
+  if(e('gap-ind-val')) e('gap-ind-val').textContent=SECTORS.industrial.gap;
+  // Update subtitle to reflect active basis
+  const subEl=document.querySelector('#panel-gap .p-sub');
+  if(subEl) subEl.innerHTML=`Gold = WTI daily close · Dashed = oil implied by sector <strong style="color:var(--gold)">${activeMultiple.toUpperCase()} EV/EBITDA</strong> · Shaded = unpriced gap · Right of marker = forward simulation`;
+  if(e('gap-scen-name')) e('gap-scen-name').textContent=SCENARIOS[activeScen].label;
+  // Simulation-dependent values — only update when sim has run
+  if(!simData) return;
+  const med=simData.p50[N_FWD];
+  const p95=simData.p95[N_FWD];
+  if(e('gap-median-val')) e('gap-median-val').textContent='$'+med.toFixed(0)+'/bbl';
+  if(e('gap-p95-val'))   e('gap-p95-val').textContent='$'+p95.toFixed(0)+'/bbl';
+}
+
+function updateCards(){
+  if(!simData) return;
+  // Update detail prose for current selection
+  if(activeTab==='wacc' && waccView==='detail') updateWACCProse(waccSec);
+  if(activeTab==='equity' && eqView==='detail') updateEqProse(eqSec);
+
+  // Still update summary cards (shown in compare mode for wacc/equity)
+  const scName=SCENARIOS[activeScen].label;
+  const RED='#E74C3C', GREEN='#27AE60';
+  const bpsToEq=bps=>Math.min(100,Math.max(-100,-(bps)*BPS_TO_EQ*100));
+  const cardCfg=[
+    {key:'airlines',   wacc:'c-air-wacc',range:'c-air-range',eq:'c-air-eq',comm:'c-air-comm'},
+    {key:'industrial', wacc:'c-ind-wacc', range:'c-ind-range',eq:'c-ind-eq',comm:'c-ind-comm'},
+    {key:'software',   wacc:'c-sw-wacc',  range:'c-sw-range', eq:'c-sw-eq', comm:'c-sw-comm'},
+    {key:'datacenter', wacc:'c-dc-wacc',  range:'c-dc-range', eq:'c-dc-eq', comm:'c-dc-comm'},
+  ];
+  cardCfg.forEach(c=>{
+    const d=simData.wacc[c.key][N_FWD];
+    const sec=SECTORS[c.key];
+    const alr=ALREADY_TRIGGERED[c.key];
+    const gap=sec.gap;
+    const totMed=alr+d.p50, totP95=alr+d.p95, totP5=alr+d.p5;
+    const wC=totMed>0?RED:GREEN;
+    document.getElementById(c.wacc).innerHTML=
+      `<span style="font-size:21px;font-weight:500;color:${wC}">${totMed>0?'+':''}${totMed.toFixed(0)}</span>`+
+      `<span style="font-size:9.5px;color:${wC};opacity:0.6"> bps · year-end</span>`;
+    const p5C=totP5>0?RED:GREEN, p95C=totP95>0?RED:GREEN;
+    document.getElementById(c.range).innerHTML=
+      `<span style="color:${p5C}">${totP5>0?'+':''}${totP5.toFixed(0)}</span>`+
+      `<span style="color:var(--grey)"> P5 — </span>`+
+      `<span style="color:${p95C}">${totP95>0?'+':''}${totP95.toFixed(0)}</span>`+
+      `<span style="color:var(--grey)"> P95</span>`;
+    const eqMed=bpsToEq(totMed);
+    const eC=eqMed>=0?GREEN:RED;
+    document.getElementById(c.eq).innerHTML=
+      `<span style="font-size:9px;color:var(--grey)">Equity: </span>`+
+      `<span style="color:${eC}">${eqMed>=0?'+':''}${eqMed.toFixed(1)}%</span>`+
+      `<span style="font-size:9px;color:var(--grey)"> median from Jan 2</span>`;
+    // Concise commentary
+    const alrEq=Math.abs(bpsToEq(alr)).toFixed(0);
+    let comm='';
+    if(gap>0){
+      comm=`<strong style="color:${RED}">$${gap}/bbl unpriced.</strong> `+
+        `The $57→$112 shock implies <strong>+${alr}bps</strong> WACC expansion not yet in multiples (~${alrEq}% equity). `+
+        `${scName} scenario year-end total: <strong style="color:${wC}">${totMed>0?'+':''}${totMed.toFixed(0)}bps</strong>.`;
+    } else {
+      comm=`<strong style="color:${GREEN}">Over-corrected by $${Math.abs(gap)}/bbl.</strong> `+
+        `Multiples reflect more disruption than oil fundamentals imply. `+
+        `${scName} year-end: <strong style="color:${wC}">${totMed>0?'+':''}${totMed.toFixed(0)}bps</strong> total from Jan 2.`;
+    }
+    document.getElementById(c.comm).innerHTML=comm;
+  });
+}
+
+// ══ TOOLTIP ════════════════════════════════════════════════════════════════
+const ttEl=document.getElementById('tt');
+function showTT(e,html){
+  ttEl.innerHTML=html;
+  let lx=e.clientX+14, ty=e.clientY-16;
+  ttEl.style.display='block';
+  const tw=ttEl.offsetWidth, th=ttEl.offsetHeight;
+  if(lx+tw>window.innerWidth-8)lx=e.clientX-tw-14;
+  if(ty+th>window.innerHeight-8)ty=window.innerHeight-th-8;
+  ttEl.style.left=lx+'px'; ttEl.style.top=ty+'px';
+  ttEl.classList.add('vis');
+}
+function hideTT(){ttEl.classList.remove('vis');}
+
+// Gap chart tooltip
+document.getElementById('cv-gap').addEventListener('mousemove',e=>{
+  const st=window._gapState; if(!st)return;
+  const rect=document.getElementById('cv-gap').getBoundingClientRect();
+  const mx=e.clientX-rect.left;
+  const t0=new Date('2026-01-01').getTime(), t1=new Date('2026-12-31').getTime();
+  const t=t0+(mx-st.pad.left)/st.cw*(t1-t0);
+
+  // Is this in historical region?
+  const todayT=new Date('2026-04-03').getTime();
+  if(t>=t0 && t<=todayT){
+    // Find closest FS date
+    let ci=0, cDist=Infinity;
+    st.fsT.forEach((ft,i)=>{const d=Math.abs(ft-t);if(d<cDist){cDist=d;ci=i;}});
+    if(cDist/((todayT-t0)/FS_DATES.length)>2){hideTT();return;}
+
+    const d=FS_DATES[ci];
+    const wti=st.wtiY[ci];
+    const gAir=wti-ACT_AIRLINES[ci], gInd=wti-ACT_INDUSTRIAL[ci];
+    const gDc=wti-ACT_DATACENTER[ci], gSw=wti-ACT_SOFTWARE[ci];
+    const fmt=(v,c)=>`<span style="color:${c}">${v>=0?'+':''}${v.toFixed(1)}</span>`;
+
+    let html=`<div class="tt-date">${d}</div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">WTI Actual</span><span class="tt-val" style="color:#F0C040">$${wti.toFixed(1)}</span></div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">Airlines implied (${activeMultiple.toUpperCase()})</span><span class="tt-val" style="color:#E74C3C">$${ACT_AIRLINES[ci].toFixed(1)}</span></div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">Industrials implied (${activeMultiple.toUpperCase()})</span><span class="tt-val" style="color:#C9A84C">$${ACT_INDUSTRIAL[ci].toFixed(1)}</span></div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">Data Centers implied (${activeMultiple.toUpperCase()})</span><span class="tt-val" style="color:#8E6BBF">$${ACT_DATACENTER[ci].toFixed(1)}</span></div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">Software implied (${activeMultiple.toUpperCase()})</span><span class="tt-val" style="color:#4A90C4">$${ACT_SOFTWARE[ci].toFixed(1)}</span></div>`;
+    html+=`<div class="tt-note">Repricing gaps (WTI − implied):<br>`;
+    html+=`Airlines ${fmt(gAir,'#E74C3C')} · Industrials ${fmt(gInd,'#C9A84C')}<br>`;
+    html+=`Data Centers ${fmt(gDc,'#8E6BBF')} · Software ${fmt(gSw,'#4A90C4')}<br>`;
+    html+=`<em>Positive = oil priced higher than sector implies</em></div>`;
+    showTT(e,html);
+  } else if(t>todayT && simData){
+    // Forward region — find closest fwd date
+    let fi=0, fDist=Infinity;
+    st.fwdT.forEach((ft,i)=>{const d=Math.abs(ft-t);if(d<fDist){fDist=d;fi=i;}});
+    const sd=simData;
+    let html=`<div class="tt-date">${FWD_DATES[fi]} · ${SCENARIOS[simData.scenario].label} scenario</div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">P95</span><span class="tt-val" style="color:rgba(231,76,60,0.9)">$${sd.p95[fi].toFixed(1)}</span></div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">P75</span><span class="tt-val" style="color:rgba(240,192,64,0.7)">$${sd.p75[fi].toFixed(1)}</span></div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">Median</span><span class="tt-val" style="color:#C9A84C;font-size:12px">$${sd.p50[fi].toFixed(1)}</span></div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">P25</span><span class="tt-val" style="color:rgba(240,192,64,0.7)">$${sd.p25[fi].toFixed(1)}</span></div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">P5</span><span class="tt-val" style="color:rgba(74,144,196,0.9)">$${sd.p5[fi].toFixed(1)}</span></div>`;
+    html+=`<div class="tt-note">2,000-path OU simulation · ${N_PATHS.toLocaleString()} paths</div>`;
+    showTT(e,html);
+  } else {hideTT();}
+});
+document.getElementById('cv-gap').addEventListener('mouseleave',hideTT);
+
+// WACC + Equity hover
+// Unified hover handler — works for all box-plot canvases
+// Uses getBoundingClientRect at event time (not stored) so compare-grid
+// cells with their own coordinate spaces work correctly.
+function buildBoxTT(found){
+  const d=found.data, key=found.key, sec=SECTORS[key];
+  const mLabel=['','M1','M2','M3 (Jul)','M4','M5','M6 (Oct)','M7','M8','M9 (Dec 31)'][found.m]||'M'+found.m;
+  const scName=SCENARIOS[simData.scenario].label;
+  const bpsToEq=b=>Math.min(100,Math.max(-100,-b*BPS_TO_EQ*100));
+  let h=`<div class="tt-date" style="color:${sec.color}">${sec.label} · ${mLabel} · ${scName}</div>`;
+
+  if(found.chartType==='wacc'){
+    const alr=found.alr||0;
+    const tot=found.totals||{p5:d.p5+alr,p25:d.p25+alr,p50:d.p50+alr,p75:d.p75+alr,p95:d.p95+alr};
+    const fmt=(v,c)=>`<span style="color:${c}">${v>=0?'+':''}${v.toFixed(0)}bps</span>`;
+    const c=v=>v>=0?'#E74C3C':'#27AE60';
+    h+=`<div class="tt-row" style="border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:4px;margin-bottom:4px">`;
+    h+=`<span class="tt-lbl">Already triggered</span>${fmt(alr,'#E74C3C')}</div>`;
+    h+=`<div class="tt-row"><span class="tt-lbl">Fwd P95</span>${fmt(d.p95,c(d.p95))}</div>`;
+    h+=`<div class="tt-row"><span class="tt-lbl">Fwd median</span><span style="color:${c(d.p50)}">${d.p50>=0?'+':''}${d.p50.toFixed(0)}bps</span></div>`;
+    h+=`<div class="tt-row"><span class="tt-lbl">Fwd P5</span>${fmt(d.p5,c(d.p5))}</div>`;
+    h+=`<div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:4px;padding-top:4px">`;
+    h+=`<div class="tt-row"><span class="tt-lbl" style="color:var(--white)">Total P95</span>${fmt(tot.p95,c(tot.p95))}</div>`;
+    h+=`<div class="tt-row"><span class="tt-lbl" style="color:var(--white)">Total median</span><span style="font-size:12px;color:${c(tot.p50)};font-weight:500">${tot.p50>=0?'+':''}${tot.p50.toFixed(0)}bps</span></div>`;
+    h+=`<div class="tt-row"><span class="tt-lbl" style="color:var(--white)">Total P5</span>${fmt(tot.p5,c(tot.p5))}</div></div>`;
+    const eq=bpsToEq(tot.p50), gap=sec.gap;
+    h+=`<div class="tt-note">Median → <strong>${tot.p50>0?'-':'+'}${Math.abs(eq).toFixed(1)}%</strong> equity from Jan 2 baseline.<br>`;
+    h+=gap>0?`$${gap}/bbl repricing gap unabsorbed in multiples.`:`Sector over-corrected by $${Math.abs(gap)}/bbl.`;
+    h+='</div>';
+  } else {
+    const alr2=found.alr||0;
+    const bte=bps=>Math.min(100,Math.max(-100,-(alr2+bps)*BPS_TO_EQ*100));
+    const ef=(v,c)=>`<span style="color:${c}">${v>=0?'+':''}${v.toFixed(1)}%</span>`;
+    const ec=v=>v>=0?'#27AE60':'#E74C3C';
+    const eqM=bte(d.p50),eqW=bte(d.p95),eqB=bte(d.p5);
+    h+=`<div class="tt-row" style="padding-bottom:4px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.08)">`;
+    h+=`<span class="tt-lbl">Already triggered</span><span style="color:#E74C3C">${(-(alr2)*BPS_TO_EQ*100).toFixed(1)}%</span></div>`;
+    h+=`<div class="tt-row"><span class="tt-lbl">Best case P5</span>${ef(eqB,ec(eqB))}</div>`;
+    h+=`<div class="tt-row"><span class="tt-lbl">P25</span>${ef(bte(d.p25),ec(bte(d.p25)))}</div>`;
+    h+=`<div class="tt-row"><span class="tt-lbl">Median</span><span style="font-size:12px;color:${ec(eqM)};font-weight:500">${eqM>=0?'+':''}${eqM.toFixed(1)}%</span></div>`;
+    h+=`<div class="tt-row"><span class="tt-lbl">P75</span>${ef(bte(d.p75),ec(bte(d.p75)))}</div>`;
+    h+=`<div class="tt-row"><span class="tt-lbl">Worst case P95</span>${ef(eqW,ec(eqW))}</div>`;
+    h+=`<div class="tt-note">Total from Jan 2 · DCF: 100bps ≈ 17% equity · capped ±100%</div>`;
+  }
+  return h;
+}
+
+function attachBoxHover(cvId, boxesArr){
+  const cv=document.getElementById(cvId); if(!cv) return;
+  cv.addEventListener('mousemove',e=>{
+    if(!simData) return;
+    const boxes=window[boxesArr]; if(!boxes||!boxes.length){hideTT();return;}
+    const rect=cv.getBoundingClientRect();
+    // Scale mouse position from CSS pixels to canvas logical pixels
+    const scaleX=cv.width/(window.devicePixelRatio||1)/rect.width;
+    const scaleY=cv.height/(window.devicePixelRatio||1)/rect.height;
+    const mx=(e.clientX-rect.left)*scaleX;
+    const my=(e.clientY-rect.top)*scaleY;
+    // Only check boxes belonging to this canvas's key(s)
+    const cvKeyMap={
+      'cv-wacc-air':'airlines','cv-wacc-ind':'industrial',
+      'cv-wacc-sw':'software','cv-wacc-dc':'datacenter',
+      'cv-wacc-detail':waccSec,
+      'cv-eq-air':'airlines','cv-eq-ind':'industrial',
+      'cv-eq-sw':'software','cv-eq-dc':'datacenter',
+      'cv-eq-detail':eqSec,
+    };
+    const cvKey=cvKeyMap[cvId];
+    let found=null;
+    for(const b of boxes){
+      if(cvKey && b.key!==cvKey) continue;
+      if(mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h){found=b;break;}
+    }
+    if(!found){hideTT();cv.style.cursor='';return;}
+    showTT(e, buildBoxTT(found));
+    cv.style.cursor='crosshair';
+  });
+  cv.addEventListener('mouseleave',()=>{hideTT();cv.style.cursor='';});
+}
+
+window.addEventListener('load',()=>{
+  const waccCvs=['cv-wacc-air','cv-wacc-ind','cv-wacc-sw','cv-wacc-dc','cv-wacc-detail'];
+  const eqCvs  =['cv-eq-air','cv-eq-ind','cv-eq-sw','cv-eq-dc','cv-eq-detail'];
+  waccCvs.forEach(id=>attachBoxHover(id,'_waccBoxes'));
+  eqCvs.forEach(id=>attachBoxHover(id,'_eqBoxes'));
+});
+
+window.addEventListener('resize',()=>{
+  if(simData) renderAll();
+  else drawGap();
+});
+
+// ══ DISCLAIMER ═════════════════════════════════════════════════════════════
+function closeDisclaimer(){
+  document.getElementById('disc-overlay').classList.add('hidden');
+}
+function openDisclaimer(){
+  document.getElementById('disc-overlay').classList.remove('hidden');
+}
+
+// ══ INIT ═══════════════════════════════════════════════════════════════════
+setScen('base');
+updateGapExplain(); // populate static values immediately
+drawGap();
+setTimeout(runSim,200);
+</script>
+</body>
+</html>
